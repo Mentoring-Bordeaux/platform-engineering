@@ -1,6 +1,6 @@
 ## Quick Start
 
-This project uses Nuxt 3.
+This project uses Nuxt 4 
 
 ## Setup
 
