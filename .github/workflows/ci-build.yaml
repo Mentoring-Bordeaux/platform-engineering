@@ -2,6 +2,11 @@ name: ci-build
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'api-init/**'
+      - 'web-app-init/**'
+      - '.github/workflows/ci-build.yaml'
   pull_request:
     branches: [main]
     paths:
