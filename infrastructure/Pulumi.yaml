@@ -1,0 +1,10 @@
+name: platform-engineering-infra
+description: Infrastructure setup for the Platform Engineering application on Azure.
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: azure-typescript
