@@ -1,0 +1,77 @@
+name: ci-build
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'api-init/**'
+      - 'web-app-init/**'
+      - '.github/workflows/ci-build.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  backend: 
+    name: Backend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api-init
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      
+      - name: dotnet restore
+        run: dotnet restore 
+    
+
+      - name: dotnet build
+        run: dotnet build --no-restore 
+
+      - name: dotnet test
+        run: dotnet test --no-build --verbosity normal
+
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web-app-init
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: ./web-app-init/pnpm-lock.yaml
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build Nuxt
+        run: pnpm run build
+
+    
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuxt-output
+          path: web-app-init/.output
+          if-no-files-found: error
