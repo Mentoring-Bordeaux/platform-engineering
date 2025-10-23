@@ -7,7 +7,7 @@ import * as containerregistry from "@pulumi/azure-native/containerregistry";
 // 1. Configurations
 const config = new pulumi.Config();
 const location = config.get("azure-native:location") || "westeurope";
-const projectPrefix = "platformeng"; // nom court et conforme
+const projectPrefix = "platformeng"; 
 
 // 2. Resource Group
 const rg = new resources.ResourceGroup(`${projectPrefix}-rg`, { location });
@@ -85,3 +85,4 @@ export const backendUrl = backend.latestRevisionFqdn.apply(fqdn => `http://${fqd
 export const resourceGroupName = rg.name;
 export const acrLoginServer = acr.loginServer;
 export const acrUsernameExport = acrUsername;
+export const acrPasswordExport = acrPassword;
