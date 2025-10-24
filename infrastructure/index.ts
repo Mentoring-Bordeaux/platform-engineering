@@ -4,35 +4,31 @@ import * as web from "@pulumi/azure-native/web";
 import * as containerapp from "@pulumi/azure-native/app";
 import * as containerregistry from "@pulumi/azure-native/containerregistry";
 
-// 1. Configurations
 const config = new pulumi.Config();
 const location = config.get("azure-native:location") || "westeurope";
 const projectPrefix = "platformeng"; 
 
 // 2. Resource Group
-const rg = new resources.ResourceGroup(`${projectPrefix}-rg`, { location });
+const rg = new resources.ResourceGroup(`rg-${projectPrefix}-`);
 
 // 3. Static Web App
-const staticApp = new web.StaticSite(`${projectPrefix}-stapp`, {
+const staticApp = new web.StaticSite(`stapp-${projectPrefix}-`, {
     resourceGroupName: rg.name,
-    location,
     sku: { name: "Free", tier: "Free" },
-    repositoryUrl: "https://github.com/Mentoring-Bordeaux/platform-engineering.git",
-    branch: "main",
+    buildProperties: {}
+    
 });
 
 // 4. Container App Environment
-const env = new containerapp.ManagedEnvironment(`${projectPrefix}-env`, {
+const env = new containerapp.ManagedEnvironment(`env-${projectPrefix}-`, {
     resourceGroupName: rg.name,
-    location,
 });
 
 // 5. Container Registry
-const acr = new containerregistry.Registry(`${projectPrefix}cr`, {
+const acr = new containerregistry.Registry(`cr${projectPrefix}`, {
     resourceGroupName: rg.name,
     sku: { name: "Basic" },
     adminUserEnabled: true,
-    location,
 });
 
 // 6. Récupérer les credentials de l'ACR
@@ -47,7 +43,6 @@ const acrPassword = credentials.apply(c => c.passwords![0].value!);
 // 7. Container App avec secret pour ACR
 const backend = new containerapp.ContainerApp(`${projectPrefix}-ca`, {
     resourceGroupName: rg.name,
-    location,
     managedEnvironmentId: env.id,
     configuration: {
         ingress: {
