@@ -4,15 +4,20 @@ on:
   push:
     branches: [main]
     paths:
-      - 'api-init/**'
-      - 'web-app-init/**'
+      - 'api/**'
+      - 'app/**'
       - '.github/workflows/ci-build.yaml'
   pull_request:
     branches: [main]
     paths:
-      - 'api-init/**'
-      - 'web-app-init/**'
+      - 'api/**'
+      - 'app/**'
       - '.github/workflows/ci-build.yaml'
+
+  workflow_run:
+    workflows: ["infrastructure"]
+    types: [completed]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./api-init
+        working-directory: ./api
 
     steps:
       - uses: actions/checkout@v4
@@ -48,8 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./web-app-init
-    
+        working-directory: ./app
     steps:
       - uses: actions/checkout@v4
 
@@ -72,11 +76,8 @@ jobs:
       - name: Build Nuxt
         run: pnpm run build
 
-    
-
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: nuxt-output
-          path: web-app-init/.output
-          if-no-files-found: error
+          path: app/.output
