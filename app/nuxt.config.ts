@@ -24,5 +24,11 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+  runtimeConfig: {
+    public: {
+      // URL of the API server in .NET
+      apiBase: process.env.NUXT_API_URL 
+    }
   }
 })
