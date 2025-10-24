@@ -1,82 +1,115 @@
-  name: infrastructure
+name: infrastructure
 
-  on:
-    pull_request:
-      branches: [ main ]
-      paths:
-        - "infrastructure/**"
-        - ".github/workflows/infra.yml"
-    push:
-      branches: [ main ]
-      paths:
-        - "infrastructure/**"
-        - ".github/workflows/infra.yml"
-    workflow_dispatch:
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/infrastructure.yaml'
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/infrastructure.yaml'
+  workflow_dispatch:
 
-  jobs:
-    pulumi:
-      runs-on: ubuntu-latest
-      defaults:
-        run:
-          working-directory: infrastructure
-      steps:
-        - uses: actions/checkout@v4
+permissions:
+  id-token: write
+  contents: read
 
-        - name: Azure Login
-          uses: azure/login@v2
-          with:
-            creds: ${{ secrets.AZURE_CREDENTIALS }}
+jobs:
+  preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure
+    steps:
+      - uses: actions/checkout@v4
 
-        - name: Setup Node (si infra en TS/Node)
-          uses: actions/setup-node@v4
-          with:
-            node-version: '20'
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-        - name: Setup pnpm
-          uses: pnpm/action-setup@v4
-          with:
-            version: 9
-            run_install: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: infrastructure/package.json
 
-        - name: Install deps
-          if: hashFiles('infrastructure/pnpm-lock.yaml') != ''
-          run: pnpm install --frozen-lockfile
+      - name: Enable pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
 
-        - name: Setup Pulumi
-          uses: pulumi/actions@v5
-          with:
-            pulumi-version: '3.x'
-          env:
-            PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      - name: Install dependencies
+        if: hashFiles('infrastructure/pnpm-lock.yaml') != ''
+        run: pnpm install --frozen-lockfile
 
-        - name: Select stack
-          run: |
-            pulumi stack select ${{ secrets.PULUMI_STACK || 'prod' }} --create
+      - name: Build TypeScript (if script present)
+        run: pnpm run --if-present build
 
-        - name: Pulumi Preview (PR)
-          if: github.event_name == 'pull_request'
-          run: pulumi preview --diff --non-interactive
+      - name: Pulumi Preview
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+        run: pnpm exec pulumi preview --stack platform-engineering/prod --non-interactive --diff
 
-        - name: Pulumi Up (main / manual)
-          if: github.event_name != 'pull_request'
-          run: pulumi up --yes --skip-preview
+  update:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure
+    steps:
+      - uses: actions/checkout@v4
 
-        # 👉 Export Pulumi outputs to a .env-style file
-        - name: Export Pulumi outputs
-          if: github.event_name != 'pull_request'
-          run: |
-            pulumi stack output --json > outputs.json
-            cat outputs.json | jq -r 'to_entries|.[]|"\(.key)=\(.value)"' > infra.outputs.env
-            echo "Generated infra.outputs.env:"
-            cat infra.outputs.env
-        
-        # 👉 Upload artifact for downstream workflows
-        - name: Upload infra outputs
-          if: github.event_name != 'pull_request'
-          uses: actions/upload-artifact@v4
-          with:
-            name: infra-outputs
-            path: infrastructure/infra.outputs.env
-            retention-days: 3
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: infrastructure/package.json
+
+      - name: Enable pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Install dependencies
+        if: hashFiles('infrastructure/pnpm-lock.yaml') != ''
+        run: pnpm install --frozen-lockfile
+
+      - name: Allow non-interactive Pulumi up
+        run: echo "PULUMI_YES=1" >> $GITHUB_ENV
+
+      - name: Build TypeScript (if script present)
+        run: pnpm run --if-present build
+
+      - name: Pulumi Up
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+        run: pnpm exec pulumi up --stack platform-engineering/prod --yes --non-interactive
+
+      - name: Export Pulumi outputs
+        run: |
+          pulumi stack output --json > outputs.json
+          cat outputs.json | jq -r 'to_entries|.[]|"\(.key)=\(.value)"' > infra.outputs.env
+          cat infra.outputs.env
+
+      - name: Upload infra outputs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: infra-outputs
+          path: infrastructure/infra.outputs.env
+          retention-days: 3
 
 
