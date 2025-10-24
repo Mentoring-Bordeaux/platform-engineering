@@ -19,11 +19,39 @@ on:
     types: [completed]
   workflow_dispatch:
 
-permissions:
-  contents: read
+concurrency:
+  group: ${{ github.ref }}-ci-build
+  cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+env:
+  IMAGE_TAG: ${{ github.sha }}
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.decide.outputs.proceed }}
+      branch: ${{ steps.decide.outputs.branch }}
+    steps:
+      - id: decide
+        shell: bash
+        run: |
+          # If we were triggered by infra, only proceed if infra succeeded.
+          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "proceed=false" >> $GITHUB_OUTPUT
+          else
+            echo "proceed=true" >> $GITHUB_OUTPUT
+          fi
+          # Determine branch name (used to fetch the right infra artifact)
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
+          else
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
   backend: 
+    needs: gate
     name: Backend Build
     runs-on: ubuntu-latest
     defaults:
@@ -49,6 +77,7 @@ jobs:
         run: dotnet test --no-build --verbosity normal
 
   frontend:
+    needs: gate
     name: Frontend Build
     runs-on: ubuntu-latest
     defaults:
@@ -81,3 +110,69 @@ jobs:
         with:
           name: nuxt-output
           path: app/.output
+  build-and-push:
+    needs: [gate, backend]
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Get ACR info from Infra outputs artifact ---
+      - name: Download infra outputs
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: infrastructure.yaml # file name of your infra workflow
+          workflow_conclusion: success
+          name: infra-outputs
+          path: _infra
+          branch: ${{ needs.gate.outputs.branch }}
+
+      - name: Load infra outputs
+        id: load_infra
+        shell: bash
+        run: |
+          if [ ! -f _infra/infra.outputs.env ]; then
+            echo "::error::Missing infra.outputs.env. Run Infrastructure (Pulumi) at least once on this branch."
+            exit 1
+          fi
+          set -a; source _infra/infra.outputs.env; set +a
+          # Expect key 'acrLoginServer' from Pulumi outputs
+          if [ -z "${acrLoginServer:-}" ]; then
+            echo "::error::acrLoginServer not found in infra.outputs.env"
+            echo "Contents:"; cat _infra/infra.outputs.env || true
+            exit 1
+          fi
+          echo "ACR_LOGIN_SERVER=$acrLoginServer" >> $GITHUB_ENV
+          # Derive ACR_NAME from login server: myacr.azurecr.io -> myacr
+          ACR_NAME="$(echo "$acrLoginServer" | cut -d. -f1)"
+          echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
+          
+      # --- Push images to ACR (no static ACR secrets needed) ---
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name "${{ env.ACR_NAME }}"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/api:${{ env.IMAGE_TAG }}
+            ${{ env.ACR_LOGIN_SERVER }}/api:latest
+          cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/api:buildcache
+          cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/api:buildcache,mode=max
+
