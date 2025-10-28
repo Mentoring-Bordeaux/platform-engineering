@@ -52,9 +52,9 @@ async Task<Repository> CreateGitHubRepository(
 
     // Call the GitHub API to create the repository 
     // This method will return the created repository details or throw an exception if it fails
-    return await client.Repository.Create(newRepo);
+    return await client.Repository.Create("LorkuiOrga", newRepo);
 }
-
++
 
 
 
