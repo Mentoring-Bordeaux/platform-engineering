@@ -1,34 +1,39 @@
 <template>
-  <div>
-    <UPageHero title="First Page - Platform Engineering" description="Example to wait the mockup of the homepage">
-      <UButton @click="askTheWeather" color="primary" size="md" class="mt-6">
-        I want to know the weather!
-      </UButton>
-      {{ weatherAnswer }}
-    </UPageHero>
-
+  <div class="flex flex-col items-center w-full py-8">
+    <div class="max-w-4xl w-full">
+      <FormSection title="Base Information">
+        <u-input
+          v-model="name"
+          label="Name"
+          placeholder="My awesome project"
+          size="md"
+        />
+        <u-textarea
+          v-model="description"
+          label="Description"
+          placeholder="Describe your project..."
+        />
+      </FormSection>
+      <PresetSelector />
+      <FrameworkSelector />
+      <PlatformSelector />
+      <div class="w-full flex justify-end">
+        <u-button
+          icon="i-lucide-cog"
+          size="md"
+          variant="solid"
+          class="cursor-pointer"
+        >
+          Configure project
+        </u-button>
+      </div>
+    </div>
   </div>
 </template>
 
-
 <script setup lang="ts">
-
 import { ref } from 'vue'
-const config = useRuntimeConfig()
 
-const weatherAnswer = ref('')
-
-async function askTheWeather() {
-  try {
-    const apiUrl = config.public.apiBase + '/weatherforecast'
-    const weatherData = await $fetch(apiUrl)
-
-    weatherAnswer.value = JSON.stringify(weatherData, null, 2)
-  } catch (error) {
-    console.error('Error fetching weather data:', error)
-    alert('Failed to fetch weather data. Check console for details.')
-  }
-}
-
-
+const name = ref('')
+const description = ref('')
 </script>
