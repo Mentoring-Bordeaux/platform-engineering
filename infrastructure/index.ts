@@ -3,15 +3,15 @@ import * as resources from "@pulumi/azure-native/resources";
 import * as web from "@pulumi/azure-native/web";
 import * as containerapp from "@pulumi/azure-native/app";
 import * as containerregistry from "@pulumi/azure-native/containerregistry";
+import * as managedidentity from "@pulumi/azure-native/managedidentity";
+import * as authorization from "@pulumi/azure-native/authorization";
 
 const config = new pulumi.Config();
 const location = config.get("azure-native:location") || "westeurope";
 const projectPrefix = "platformeng"; 
 
-// 2. Resource Group
 const rg = new resources.ResourceGroup(`rg-${projectPrefix}-`);
 
-// 3. Static Web App
 const staticApp = new web.StaticSite(`stapp-${projectPrefix}-`, {
     resourceGroupName: rg.name,
     sku: { name: "Free", tier: "Free" },
@@ -19,31 +19,40 @@ const staticApp = new web.StaticSite(`stapp-${projectPrefix}-`, {
     
 });
 
-// 4. Container App Environment
 const env = new containerapp.ManagedEnvironment(`env-${projectPrefix}-`, {
     resourceGroupName: rg.name,
 });
 
-// 5. Container Registry
 const acr = new containerregistry.Registry(`cr${projectPrefix}`, {
     resourceGroupName: rg.name,
     sku: { name: "Basic" },
-    adminUserEnabled: true,
+    adminUserEnabled: false,
 });
 
-// 6. Récupérer les credentials de l'ACR
-const credentials = containerregistry.listRegistryCredentialsOutput({
+const identity = new managedidentity.UserAssignedIdentity(`uai-${projectPrefix}`, {
     resourceGroupName: rg.name,
-    registryName: acr.name,
 });
 
-const acrUsername = credentials.apply(c => c.username!);
-const acrPassword = credentials.apply(c => c.passwords![0].value!);
+const acrPullRoleDefinitionId ="/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d";
 
-// 7. Container App avec secret pour ACR
-const backend = new containerapp.ContainerApp(`${projectPrefix}-ca`, {
+const roleAssignment = new authorization.RoleAssignment(`ra-acr-pull-${projectPrefix}`, {
+  principalId: identity.principalId,
+  roleDefinitionId: acrPullRoleDefinitionId,
+  scope: rg.id,
+  principalType: "ServicePrincipal", 
+});
+
+
+const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
     resourceGroupName: rg.name,
     managedEnvironmentId: env.id,
+    identity: {
+        type: "UserAssigned",
+        userAssignedIdentities: identity.id.apply(id => ({
+            [id]: {}
+        })) as any,
+    },
+
     configuration: {
         ingress: {
             external: true,
@@ -52,12 +61,8 @@ const backend = new containerapp.ContainerApp(`${projectPrefix}-ca`, {
         registries: [
             {
                 server: acr.loginServer,
-                username: acrUsername,
-                passwordSecretRef: "acr-password",
+                identity: identity.id,
             },
-        ],
-        secrets: [
-            { name: "acr-password", value: acrPassword },
         ],
     },
     template: {
@@ -72,12 +77,13 @@ const backend = new containerapp.ContainerApp(`${projectPrefix}-ca`, {
             },
         ],
     },
-});
+}, { dependsOn: [roleAssignment] });
+ 
 
-// 8. Exports
+
 export const staticWebUrl = staticApp.defaultHostname;
-export const backendUrl = backend.latestRevisionFqdn.apply(fqdn => `http://${fqdn}`);
+export const backendUrl = backend.latestRevisionFqdn.apply(fqdn => `https://${fqdn}`);
 export const resourceGroupName = rg.name;
-export const acrLoginServer = acr.loginServer;
-export const acrUsernameExport = acrUsername;
-export const acrPasswordExport = acrPassword;
+export const containerRegistryName = acr.name;
+export const containerAppName = backend.name;
+export const acrServer = acr.loginServer;
