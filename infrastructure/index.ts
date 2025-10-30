@@ -6,8 +6,7 @@ import * as containerregistry from "@pulumi/azure-native/containerregistry";
 import * as managedidentity from "@pulumi/azure-native/managedidentity";
 import * as authorization from "@pulumi/azure-native/authorization";
 
-const config = new pulumi.Config();
-const location = config.get("azure-native:location") || "westeurope";
+
 const projectPrefix = "platformeng"; 
 
 const rg = new resources.ResourceGroup(`rg-${projectPrefix}-`);
