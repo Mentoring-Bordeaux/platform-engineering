@@ -7,65 +7,64 @@ on:
       - completed
 
 env:
-  IMAGE_TAG: ${{ github.sha }}
-  # ⚠️ Mettez les vrais noms créés par Pulumi :
-  APP_NAME_API: mono-api             # Container App (backend)
-  WEBAPP_NAME: mono-app-web          # Web App for Containers (frontend)
-  WEBSITES_PORT: "3000"              # Port exposé par l'image du front (Nuxt SSR typiquement 3000)
-  RG: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  APP_LOCATION: "app" # location of your client code
+  APP_ARTIFACT_LOCATION: "app/.output/" # location of client code build output
+  AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }} # secret containing deployment token for your static web app
 
 jobs:
-  build-and-push-images:
+  download_infra_outputs:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    outputs:
+      infra_loaded: ${{ steps.load_infra.outputs.infra_loaded }}
+      ACR_LOGIN_SERVER: ${{ steps.load_infra.outputs.ACR_LOGIN_SERVER }}
+      ACR_NAME: ${{ steps.load_infra.outputs.ACR_NAME }}
+      ACR_REGISTRY_NAME: ${{ steps.load_infra.outputs.ACR_REGISTRY_NAME }}
+      ACR_USERNAME: ${{ steps.load_infra.outputs.ACR_USERNAME }}
+      ACR_PASSWORD: ${{ steps.load_infra.outputs.ACR_PASSWORD }}
+      RG: ${{ steps.load_infra.outputs.RG }}
+      STATIC_WEB_APP_URL: ${{ steps.load_infra.outputs.STATIC_WEB_APP_URL }}      
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
+      - name: Download infra outputs
+        uses: dawidd6/action-download-artifact@v6
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Docker login to ACR
+          workflow: infrastructure.yaml
+          workflow_conclusion: success
+          name: infra-outputs
+          path: infrastructure
+      - name: Load infra outputs
+        id: load_infra
+        shell: bash
         run: |
-          echo "${{ secrets.ACR_PASSWORD }}" \
-          | docker login ${{ secrets.ACR_LOGIN_SERVER }} \
-            -u ${{ secrets.ACR_USERNAME }} --password-stdin
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # --- Build & push API image ---
-      - name: Build & push API image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./api
-          file: Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/mono/api:${{ env.IMAGE_TAG }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/mono/api:latest
-
-      # --- Build & push Front image ---
-      - name: Build & push APP image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./app
-          file: Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/mono/app:${{ env.IMAGE_TAG }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/mono/app:latest
-
-      - name: Export image tags for downstream jobs
-        run: |
-          echo "API_IMAGE=${{ secrets.ACR_LOGIN_SERVER }}/mono/api:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
-          echo "APP_IMAGE=${{ secrets.ACR_LOGIN_SERVER }}/mono/app:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+          if [ ! -f infrastructure/infra.outputs.env ]; then
+            echo "::error::Missing infra.outputs.env. Run Infrastructure at least once on this branch."
+            exit 1
+          fi
+          set -a; source infrastructure/infra.outputs.env; set +a
+          # Expect key 'acrLoginServer' from Pulumi outputs
+          if [ -z "${acrLoginServer:-}" ]; then
+            echo "::error::acrLoginServer not found in infra.outputs.env"
+            echo "Contents:"; cat infrastructure/infra.outputs.env || true
+            exit 1
+          fi
+          echo "ACR_LOGIN_SERVER=$acrLoginServer" >> $GITHUB_ENV
+          echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
+          echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_ENV
+          echo "RG=$resourceGroupName" >> $GITHUB_ENV
+          echo "ACR_USERNAME=$acrUsernameExport" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$acrPasswordExport" >> $GITHUB_ENV
+          echo "STATIC_WEB_APP_URL=$staticWebAppUrl" >> $GITHUB_ENV
+          echo "BACKEND_URL=$backendUrl" >> $GITHUB_ENV
 
   deploy-api-aca:
-    needs: build-and-push-images
+    needs: download_infra_outputs
+    if: needs.download_infra_outputs.outputs.infra_loaded == 'true'
+    env:
+      RG:               ${{ needs.download_infra_outputs.outputs.rg }}
+      ACR_NAME:         ${{ needs.download_infra_outputs.outputs.acr_name }}
+      ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.acr_login_server }}
+      ACR_USERNAME:     ${{ needs.download_infra_outputs.outputs.acr_username }}
+      ACR_PASSWORD:     ${{ needs.download_infra_outputs.outputs.acr_password }}
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,48 +72,47 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Update API image on Container App (new revision)
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            az extension add --name containerapp --upgrade
-            az containerapp update \
-              -g "${{ env.RG }}" \
-              -n "${{ env.APP_NAME_API }}" \
-              --image "${{ env.API_IMAGE }}" \
-              --revision-suffix "${{ github.sha }}"
-            echo "API URL:"
-            az containerapp show -g "${{ env.RG }}" -n "${{ env.APP_NAME_API }}" \
-              --query properties.configuration.ingress.fqdn -o tsv
+      - name: Deploy to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ env.ACR_NAME }} \
+            --resource-group ${{ env.RG }} \
+            --image "${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest" \
 
   deploy-frontend-webapp:
-    needs: build-and-push-images
+    permissions:
+      contents: read # for actions/checkout to fetch code
+      pull-requests: write # for Azure/static-web-apps-deploy to comment on PRs
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
+    name: Build and Deploy Job
     steps:
       - uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # Si Pulumi a déjà lié le Web App à ACR (Managed Identity), pas besoin d'user/pass.
-      - name: Point Web App to new image
-        uses: azure/cli@v2
+          submodules: true
+      - name: Build And Deploy
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
         with:
-          inlineScript: |
-            az webapp config container set \
-              --resource-group "${{ env.RG }}" \
-              --name "${{ env.WEBAPP_NAME }}" \
-              --docker-custom-image-name "${{ env.APP_IMAGE }}"
-            az webapp config appsettings set \
-              --resource-group "${{ env.RG }}" \
-              --name "${{ env.WEBAPP_NAME }}" \
-              --settings WEBSITES_PORT=${{ env.WEBSITES_PORT }}
-            # (Optionnel) si vous avez besoin d'une commande de démarrage spécifique :
-            # az webapp config set --resource-group "${{ env.RG }}" --name "${{ env.WEBAPP_NAME }}" --startup-file "node .output/server/index.mjs"
-            az webapp restart --resource-group "${{ env.RG }}" --name "${{ env.WEBAPP_NAME }}"
-            echo "Front URL:"
-            az webapp show -g "${{ env.RG }}" -n "${{ env.WEBAPP_NAME }}" --query defaultHostName -o tsv
+          azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }} # secret containing api token for app
+          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
+          action: "upload"
+          app_location: ${{ env.APP_LOCATION }}
+          app_artifact_location: ${{ env.APP_ARTIFACT_LOCATION }}
+  close_pull_request_job:
+    permissions:
+      contents: none
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        id: closepullrequest
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: "close"

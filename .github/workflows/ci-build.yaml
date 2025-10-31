@@ -52,6 +52,7 @@ jobs:
           fi
   backend: 
     needs: gate
+    if: needs.gate.outputs.proceed == 'true'
     name: Backend Build
     runs-on: ubuntu-latest
     defaults:
@@ -78,6 +79,7 @@ jobs:
 
   frontend:
     needs: gate
+    if: needs.gate.outputs.proceed == 'true'
     name: Frontend Build
     runs-on: ubuntu-latest
     defaults:
@@ -91,7 +93,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'pnpm'
-          cache-dependency-path: ./web-app-init/pnpm-lock.yaml
+          cache-dependency-path: ./app/pnpm-lock.yaml
 
       - name: Enable pnpm
         run: corepack enable
@@ -110,6 +112,7 @@ jobs:
         with:
           name: nuxt-output
           path: app/.output
+
   build-and-push:
     needs: [gate, backend]
     if: needs.gate.outputs.proceed == 'true'
@@ -124,32 +127,31 @@ jobs:
       - name: Download infra outputs
         uses: dawidd6/action-download-artifact@v6
         with:
-          workflow: infrastructure.yaml # file name of your infra workflow
+          workflow: infrastructure.yaml
           workflow_conclusion: success
           name: infra-outputs
-          path: _infra
+          path: infrastructure
           branch: ${{ needs.gate.outputs.branch }}
 
       - name: Load infra outputs
         id: load_infra
         shell: bash
         run: |
-          if [ ! -f _infra/infra.outputs.env ]; then
-            echo "::error::Missing infra.outputs.env. Run Infrastructure (Pulumi) at least once on this branch."
+          if [ ! -f infrastructure/infra.outputs.env ]; then
+            echo "::error::Missing infra.outputs.env. Run Infrastructure at least once on this branch."
             exit 1
           fi
-          set -a; source _infra/infra.outputs.env; set +a
+          set -a; source infrastructure/infra.outputs.env; set +a
           # Expect key 'acrLoginServer' from Pulumi outputs
           if [ -z "${acrLoginServer:-}" ]; then
             echo "::error::acrLoginServer not found in infra.outputs.env"
-            echo "Contents:"; cat _infra/infra.outputs.env || true
+            echo "Contents:"; cat infrastructure/infra.outputs.env || true
             exit 1
           fi
           echo "ACR_LOGIN_SERVER=$acrLoginServer" >> $GITHUB_ENV
-          # Derive ACR_NAME from login server: myacr.azurecr.io -> myacr
-          ACR_NAME="$(echo "$acrLoginServer" | cut -d. -f1)"
-          echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
-          
+          echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
+          echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_ENV  
+          echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_ENV    
       # --- Push images to ACR (no static ACR secrets needed) ---
       - name: Azure Login
         uses: azure/login@v2
@@ -159,7 +161,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: ACR login
-        run: az acr login --name "${{ env.ACR_NAME }}"
+        run: az acr login --name "${{ env.ACR_REGISTRY_NAME }}"
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -171,8 +173,8 @@ jobs:
           file: ./api/Dockerfile
           push: true
           tags: |
-            ${{ env.ACR_LOGIN_SERVER }}/api:${{ env.IMAGE_TAG }}
-            ${{ env.ACR_LOGIN_SERVER }}/api:latest
-          cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/api:buildcache
-          cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/api:buildcache,mode=max
+            ${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:${{ env.IMAGE_TAG }}
+            ${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest
+          cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache
+          cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache,mode=max
 
