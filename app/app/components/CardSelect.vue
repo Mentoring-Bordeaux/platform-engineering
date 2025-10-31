@@ -1,7 +1,8 @@
 <template>
   <u-page-card
-    :icon="icon"
     :title="title"
+    :icon="icon"
+    :description="description"
     :class="styleClasses"
     @click="onSelect"
   />
@@ -9,8 +10,9 @@
 
 <script setup lang="ts">
 const { icon, title, isSelected } = defineProps<{
-  icon: string
   title: string
+  icon?: string
+  description?: string
   isSelected: boolean
 }>()
 
