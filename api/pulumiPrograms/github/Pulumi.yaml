@@ -1,0 +1,7 @@
+name: create-github-repo
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+
+description: Create a GitHub repository using Pulumi

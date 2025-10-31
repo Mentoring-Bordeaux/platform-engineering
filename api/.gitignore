@@ -37,3 +37,6 @@ msbuild.wrn
 # Node modules in Pulumi programs
 **/node_modules/
 pulumiPrograms/**/node_modules/
+
+# Pulumi stack files
+pulumiPrograms/**/Pulumi.*.yaml
