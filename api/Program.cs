@@ -1,5 +1,15 @@
 using System.Reflection.Metadata.Ecma335;
-using Octokit;
+using System.Runtime.CompilerServices;
+using System.Reflection;
+
+using Microsoft.AspNetCore.Mvc;
+using Pulumi.Automation;
+using System.Text.RegularExpressions;
+
+
+//////////////////////////////////////////////// Configure the API  ////////////////////////////////////////////////
+
+// Create a builder for the web application
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,35 +39,6 @@ var app = builder.Build();
 // Use the configured CORS policy
 app.UseCors("NuxtPolicy");
 
-// Method to create a GitHub repository using Octokit
-async Task<Repository> CreateGitHubRepository(
-    string pat,
-    string repoName,
-    string? description,
-    bool isPrivate)
-{
-    // Initialize the GitHub client with the provided PAT
-    var client = new GitHubClient(new ProductHeaderValue("MonAppGitHubCreator"))
-    {
-        Credentials = new Credentials(pat)
-    };
-
-    // Create the repository object with the specified parameters
-    var newRepo = new NewRepository(repoName)
-    {
-        Description = description ?? "Dépôt créé via une API .NET",
-        Private = isPrivate,
-        AutoInit = true // Crée un README initial
-    };
-
-    // Call the GitHub API to create the repository 
-    // This method will return the created repository details or throw an exception if it fails
-    return await client.Repository.Create("LorkuiOrga", newRepo);
-}
-+
-
-
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -67,79 +48,139 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
 
-app.MapGet("/weatherforecast", () =>
+////////////////////////////////////////////// Pulumi Automation API Logic  ////////////////////////////////////////////////
+
+
+
+async Task<IResult> CreateGitHubRepository(CreateRepoRequest request)
 {
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+
+    var stackName = "github-repo-stack";
+    var stack = null as WorkspaceStack;
+
+    var executingDir = Directory.GetCurrentDirectory();
+    var workingDir = Path.Combine(executingDir, "pulumiPrograms", "github");
+    try
+    {
+
+
+        var stackArgs = new LocalProgramArgs(stackName, workingDir);
+        stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
+
+        await stack.SetConfigAsync("githubToken", new ConfigValue(request.GithubToken));
+        await stack.SetConfigAsync("repoName", new ConfigValue(request.RepoName));
+        if (request.Description != null && request.Description != "")
+        {
+            await stack.SetConfigAsync("description", new ConfigValue(request.Description));
+        }
+        await stack.SetConfigAsync("isPrivate", new ConfigValue(request.Private.ToString().ToLowerInvariant()));
+        if (request.OrgName != null && request.OrgName != "")
+        {
+            await stack.SetConfigAsync("orgName", new ConfigValue(request.OrgName));
+        }
+
+        // Run the Pulumi program
+        var result = await stack.UpAsync(new UpOptions
+        {
+            OnStandardOutput = (output) => Console.WriteLine(output),
+            OnStandardError = (error) => Console.WriteLine($"ERROR: {error}")
+
+
+        });
+
+        // Retrieve outputs
+        var outputs = result.Outputs;
+        var repoNameOutput = outputs["repoNameOutput"].Value.ToString();
+        var repoUrl = outputs["repoUrl"].Value.ToString();
+
+        // Return the created repository information
+        return Results.Ok(new
+        {
+            RepoName = repoNameOutput,
+            RepoUrl = repoUrl
+        });
+
+    }
+    catch (Exception ex)
+    {
+        // Regex pattern to capture Status Code (Group 1), Error Message (Group 2), and Detail (Group 3)
+        const string githubErrorRegex = @"POST.*: (\d+) (.*?)\. \[(.*)\]";
+
+        var match = Regex.Match(ex.Message, githubErrorRegex);
+        if (match.Success)
+        {
+            var statusCodeStr = match.Groups[1].Value;
+            var errorMessage = match.Groups[2].Value;
+            var errorDetail = match.Groups[3].Value;
+
+            // Try to parse the string status code into an integer
+            if (int.TryParse(statusCodeStr, out var statusCodeInt))
+            {
+                Console.WriteLine($"GitHub API error occurred: {errorMessage} (Status code: {statusCodeInt})");
+
+                // Return Results.Problem with the explicit status code
+                // This will set the actual HTTP response status to 422 for Repository creation or 403 for Token permission issues
+                return Results.Problem(
+                    detail: $"GitHub API error occurred: {errorMessage}. Detail: {errorDetail}",
+                    statusCode: statusCodeInt,
+                    title: "Repository Creation Failed",
+                    type: "github-error"
+                );
+            }
+            // Fallback for parsing failure
+            return Results.Problem($"An internal error occurred while processing the GitHub API response: {ex.Message}");
+        }
+
+        Console.WriteLine("Outputting general exception details.");
+        // General Pulumi or unparsed exception
+        return Results.Problem($"An error occurred: {ex.Message}");
+    }
+    finally
+    {
+        if (stack != null)
+        {
+            // Delete the stack's resources
+            await stack.DestroyAsync();
+
+            // Delete the stack's workspace
+            await stack.Workspace.RemoveStackAsync(stackName);
+
+            //Delete the stack's yaml file to avoid conflicts on next creation
+            var stackYamlPath = Path.Combine(workingDir, $"Pulumi.{stackName}.yaml");
+            if (File.Exists(stackYamlPath))
+            {
+                File.Delete(stackYamlPath);
+            }
+        }
+    }
+
+}
+
+
+//////////////////////////////////////////////////// Define API Endpoints ////////////////////////////////////////////////
+
 
 // Define the request model for creating a repository
 app.MapPost("/create-repo", async (CreateRepoRequest request) =>
 {
-    if (string.IsNullOrEmpty(request.Pat) || string.IsNullOrEmpty(request.RepoName))
+    if (string.IsNullOrEmpty(request.GithubToken) || string.IsNullOrEmpty(request.RepoName))
     {
-        return Results.BadRequest("The 'Pat' and 'RepoName' fields are required.");
+        return Results.BadRequest("The 'GithubToken' and 'RepoName' fields are required.");
     }
 
-    try
-    {
-        // Call the method to create the repository
-        var repository = await CreateGitHubRepository(
-            request.Pat,
-            request.RepoName,
-            request.Description,
-            request.Private
-        );
-        
-        // Treat the response
-        return Results.Created(
-            repository.HtmlUrl, // URL of the created repository
-            new { 
-                Message = $"Repository '{repository.Name}' created successfully.", 
-                Url = repository.HtmlUrl 
-            }
-        );
-    }
-    catch (ApiException apiEx)
-    {
-        // Handle GitHub API errors specifically (e.g., repository name already taken)
-        return Results.Problem(
-            title: "GitHub API Error", 
-            detail: $"Creation failed: {apiEx.Message}",
-            statusCode: (int)apiEx.StatusCode
-        );
-    }
-    catch (Exception ex)
-    {
-        // Handle all other exceptions
-        return Results.Problem($"Internal error: {ex.Message}");
-    }
+    // Call the method to create the repository
+    var result = await CreateGitHubRepository(
+        request
+    );
+    return result;
+
 });
-
-
-
-
-
-
 
 app.Run();
 
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+
+
+
 
 
