@@ -7,7 +7,7 @@ on:
       - 'infrastructure/**'
       - '.github/workflows/infrastructure.yaml'
   push:
-    branches: [main]
+    branches: [main, feature/pipelines]
     paths:
       - 'infrastructure/**'
       - '.github/workflows/infrastructure.yaml'
