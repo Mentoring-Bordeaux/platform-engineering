@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   preview:
+    environment: production
     # Only run preview when the PR is from the same repository (secrets + OIDC available)
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
@@ -59,6 +60,7 @@ jobs:
         run: pnpm exec pulumi preview --stack platform-engineering/prod --non-interactive --diff
 
   update:
+    environment: production
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     defaults:
