@@ -7,8 +7,7 @@ on:
       - 'api/**'
       - 'app/**'
       - '.github/workflows/ci-build.yaml'
-    paths-ignore:
-      - 'infrastructure/**'
+    
   pull_request:
     branches: [main]
     paths:
