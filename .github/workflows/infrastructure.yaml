@@ -19,7 +19,8 @@ permissions:
 
 jobs:
   preview:
-    if: github.event_name == 'pull_request'
+    # Only run preview when the PR is from the same repository (secrets + OIDC available)
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,7 +31,6 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          enable-oidc: true
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
