@@ -40,19 +40,16 @@ jobs:
             exit 1
           fi
           set -a; source infrastructure/infra.outputs.env; set +a
-          # Expect key 'acrLoginServer' from Pulumi outputs
-          if [ -z "${acrLoginServer:-}" ]; then
-            echo "::error::acrLoginServer not found in infra.outputs.env"
+          # Expect key 'acrServer' from Pulumi outputs
+          if [ -z "${acrServer:-}" ]; then
+            echo "::error::acrServer not found in infra.outputs.env"
             echo "Contents:"; cat infrastructure/infra.outputs.env || true
             exit 1
           fi
-          echo "ACR_LOGIN_SERVER=$acrLoginServer" >> $GITHUB_ENV
-          echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
           echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_ENV
+          echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
           echo "RG=$resourceGroupName" >> $GITHUB_ENV
-          echo "ACR_USERNAME=$acrUsernameExport" >> $GITHUB_ENV
-          echo "ACR_PASSWORD=$acrPasswordExport" >> $GITHUB_ENV
-          echo "STATIC_WEB_APP_URL=$staticWebAppUrl" >> $GITHUB_ENV
+          echo "STATIC_WEB_APP_URL=$staticWebUrl" >> $GITHUB_ENV
           echo "BACKEND_URL=$backendUrl" >> $GITHUB_ENV
 
   deploy-api-aca:

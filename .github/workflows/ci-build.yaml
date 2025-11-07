@@ -76,6 +76,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -130,16 +139,16 @@ jobs:
             exit 1
           fi
           set -a; source infrastructure/infra.outputs.env; set +a
-          # Expect key 'acrLoginServer' from Pulumi outputs
-          if [ -z "${acrLoginServer:-}" ]; then
-            echo "::error::acrLoginServer not found in infra.outputs.env"
+          # Expect key 'acrServer' from Pulumi outputs
+          if [ -z "${acrServer:-}" ]; then
+            echo "::error::acrServer not found in infra.outputs.env"
             echo "Contents:"; cat infrastructure/infra.outputs.env || true
             exit 1
           fi
-          echo "ACR_LOGIN_SERVER=$acrLoginServer" >> $GITHUB_ENV
           echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
           echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_ENV  
-          echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_ENV    
+          echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_ENV  
+            
       # --- Push images to ACR (no static ACR secrets needed) ---
       - name: Azure Login
         uses: azure/login@v2
