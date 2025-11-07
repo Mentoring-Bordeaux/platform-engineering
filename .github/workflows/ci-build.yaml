@@ -3,8 +3,7 @@ name: ci-build
 on:
   workflow_run:
     workflows: ["infrastructure"]
-    types: 
-      - completed
+    types: [completed]
     branches: [main, feature/pipelines]
   workflow_dispatch:
 
