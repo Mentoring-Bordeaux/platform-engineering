@@ -82,8 +82,7 @@ jobs:
           version: 9
           run_install: false
 
-      - name: Install dependencies
-        run: pnpm install
+      
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -95,6 +94,8 @@ jobs:
       - name: Enable pnpm
         run: corepack enable
 
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Lint
         run: pnpm run lint
