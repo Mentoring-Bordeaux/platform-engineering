@@ -89,7 +89,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'pnpm'
-          cache-dependency-path: ./app/pnpm-lock.yaml
+          cache-dependency-path: app/pnpm-lock.yaml
 
       - name: Enable pnpm
         run: corepack enable
