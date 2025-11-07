@@ -2,15 +2,20 @@ name: infrastructure
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/pipelines]
     paths:
+      - 'api/**'
+      - 'app/**'
       - 'infrastructure/**'
-      - '.github/workflows/infrastructure.yaml'
+      - '.github/workflows/**'
+
   push:
     branches: [main, feature/pipelines]
     paths:
+      - 'api/**'
+      - 'app/**'
       - 'infrastructure/**'
-      - '.github/workflows/infrastructure.yaml'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
@@ -54,10 +59,19 @@ jobs:
       - name: Build TypeScript (if script present)
         run: pnpm run --if-present build
 
+      - name: Pulumi Auth
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: teachingiac
+          requested-token-type: urn:pulumi:token-type:access_token:team
+          scope: team:Enseirb_students
+
       - name: Pulumi Preview
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: pnpm exec pulumi preview --stack platform-engineering/dev --non-interactive --diff
+        uses: pulumi/actions@v6
+        with:
+          command: preview
+          stack-name: teachingiac/platform-engineering-infra/dev
+          work-dir: infrastructure
 
   update:
     environment: development

@@ -1,23 +1,10 @@
 name: ci-build
 
 on:
-  push:
-    branches: [main, feature/pipelines]
-    paths:
-      - 'api/**'
-      - 'app/**'
-      - '.github/workflows/ci-build.yaml'
-    
-  pull_request:
-    branches: [main]
-    paths:
-      - 'api/**'
-      - 'app/**'
-      - '.github/workflows/ci-build.yaml'
-
   workflow_run:
     workflows: ["infrastructure"]
-    types: [completed]
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
@@ -30,30 +17,7 @@ permissions:
 env:
   IMAGE_TAG: ${{ github.sha }}
 jobs:
-  gate:
-    runs-on: ubuntu-latest
-    outputs:
-      proceed: ${{ steps.decide.outputs.proceed }}
-      branch: ${{ steps.decide.outputs.branch }}
-    steps:
-      - id: decide
-        shell: bash
-        run: |
-          # If we were triggered by infra, only proceed if infra succeeded.
-          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
-            echo "proceed=false" >> $GITHUB_OUTPUT
-          else
-            echo "proceed=true" >> $GITHUB_OUTPUT
-          fi
-          # Determine branch name (used to fetch the right infra artifact)
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
-          else
-            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
   backend: 
-    needs: gate
-    if: needs.gate.outputs.proceed == 'true'
     name: Backend Build
     runs-on: ubuntu-latest
     defaults:
@@ -79,8 +43,6 @@ jobs:
         run: dotnet test --no-build --verbosity normal
 
   frontend:
-    needs: gate
-    if: needs.gate.outputs.proceed == 'true'
     name: Frontend Build
     runs-on: ubuntu-latest
     defaults:
@@ -115,8 +77,7 @@ jobs:
           path: app/.output
 
   build-and-push:
-    needs: [gate, backend]
-    if: needs.gate.outputs.proceed == 'true'
+    needs: [backend]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
