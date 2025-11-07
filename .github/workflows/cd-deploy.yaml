@@ -53,6 +53,7 @@ jobs:
           echo "BACKEND_URL=$backendUrl" >> $GITHUB_ENV
 
   deploy-api-aca:
+    environment: development
     needs: download_infra_outputs
     if: needs.download_infra_outputs.outputs.infra_loaded == 'true'
     env:
@@ -81,6 +82,7 @@ jobs:
             --image "${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest" \
 
   deploy-frontend-webapp:
+    environment: development
     permissions:
       contents: read # for actions/checkout to fetch code
       pull-requests: write # for Azure/static-web-apps-deploy to comment on PRs
