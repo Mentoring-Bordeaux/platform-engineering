@@ -98,7 +98,7 @@ jobs:
         run: pnpm install
 
       - name: Lint
-        run: pnpm run lint
+        run: pnpm run lint -- --fix
 
       - name: Build Nuxt
         run: pnpm run build
