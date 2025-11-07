@@ -21,6 +21,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  actions: write
 
 jobs:
   preview:
@@ -139,6 +140,8 @@ jobs:
           retention-days: 3
 
   ci-build:
+    needs: [update]
+    
     environment: development
     if: success()
     runs-on: ubuntu-latest
