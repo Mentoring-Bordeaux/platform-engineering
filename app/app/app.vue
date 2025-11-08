@@ -10,7 +10,7 @@
 
     <UFooter>
       <template #left>
-        <p class="text-sm text-muted">
+        <p class="text-muted text-sm">
           Built by Enseirb Team • © {{ new Date().getFullYear() }}
         </p>
       </template>

@@ -16,7 +16,7 @@
 
   <!-- Preset Selection Section -->
   <FormSection title="Preset">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       <CardSelect
         v-for="(preset, key) in presets"
         :key="key"
@@ -36,8 +36,11 @@
   </FormSection>
 
   <!-- Framework Selection Section -->
-  <FormSection title="Framework Selection" v-if="showFrameworkSection">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <FormSection
+    v-if="showFrameworkSection"
+    title="Framework Selection"
+  >
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       <CardSelect
         v-for="(framework, key) in frameworks"
         :key="key"
@@ -50,8 +53,11 @@
   </FormSection>
 
   <!-- Platform Selection Section -->
-  <FormSection title="Platform Selection" v-if="showPlatformSection">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <FormSection
+    v-if="showPlatformSection"
+    title="Platform Selection"
+  >
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       <CardSelect
         v-for="(platform, key) in platforms"
         :key="key"
@@ -64,7 +70,10 @@
   </FormSection>
 
   <!-- Submit Button -->
-  <div class="w-full flex justify-end" v-if="showSubmitButton">
+  <div
+    v-if="showSubmitButton"
+    class="flex w-full justify-end"
+  >
     <u-button
       icon="i-lucide-cog"
       size="md"

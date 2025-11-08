@@ -1,6 +1,6 @@
 <template>
   <div
-    class="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary transition-outline duration-150 ease-in-out rounded-lg"
+    class="focus-visible:outline-primary transition-outline rounded-lg duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-4"
     tabindex="0"
     role="button"
     @keydown="onKeydown"
@@ -10,7 +10,7 @@
       :icon="icon"
       :description="description"
       :highlight="isSelected"
-      class="flex flex-1 h-full"
+      class="flex h-full flex-1"
       @click.stop="onSelect"
     />
   </div>
