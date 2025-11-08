@@ -23,15 +23,15 @@
         :title="preset.name"
         :description="preset.description"
         :is-selected="selectedPreset === key"
-        @click="onPresetSelect(key)"
+        @select="onPresetSelect(key)"
       />
     </div>
     <u-separator label="or" />
     <CardSelect
-      :is-selected="selectedPreset === 'blank'"
       title="Blank Template"
       description="Use your own custom template repository."
-      @click="onPresetSelect('blank')"
+      :is-selected="selectedPreset === 'blank'"
+      @select="onPresetSelect('blank')"
     />
   </FormSection>
 
@@ -70,6 +70,7 @@
       size="md"
       variant="solid"
       class="cursor-pointer"
+      @click.prevent="onSubmit"
     >
       Configure project
     </u-button>
@@ -145,5 +146,43 @@ const selectedPlatform = ref<PlatformKey | null>(null)
 
 const onPlatformSelect = (key: PlatformKey) => {
   selectedPlatform.value = key
+}
+
+// Submit action
+
+interface FormData {
+  name: string
+  description: string
+  preset: string
+  frameworks: FrameworkKey[]
+  platform: PlatformKey
+}
+
+const onSubmit = () => {
+  if (!name.value) {
+    alert('Please enter a project name.')
+    return
+  }
+  if (!selectedPlatform.value) {
+    alert('Please select a platform.')
+    return
+  }
+  const frameworksArray = Array.from(selectedFramework.value)
+  if (frameworksArray.length === 0) {
+    alert('Please select at least one framework.')
+    return
+  }
+  if (!selectedPreset.value) {
+    alert('Please select a preset.')
+    return
+  }
+  const formObject: FormData = {
+    name: name.value,
+    description: description.value,
+    preset: selectedPreset.value,
+    frameworks: frameworksArray,
+    platform: selectedPlatform.value
+  }
+  console.log('Form submitted with data:', formObject)
 }
 </script>

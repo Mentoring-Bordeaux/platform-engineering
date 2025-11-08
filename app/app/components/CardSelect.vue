@@ -1,11 +1,19 @@
 <template>
-  <u-page-card
-    :title="title"
-    :icon="icon"
-    :description="description"
-    :class="styleClasses"
-    @click="onSelect"
-  />
+  <div
+    class="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary transition-outline duration-150 ease-in-out rounded-lg"
+    tabindex="0"
+    role="button"
+    @keydown="onKeydown"
+  >
+    <u-page-card
+      :title="title"
+      :icon="icon"
+      :description="description"
+      :highlight="isSelected"
+      class="flex flex-1 h-full"
+      @click.stop="onSelect"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -16,18 +24,20 @@ const { icon, title, isSelected } = defineProps<{
   isSelected: boolean
 }>()
 
-const emits = defineEmits<{
-  (e: 'select', isSelected: boolean): void
+const emit = defineEmits<{
+  select: []
 }>()
 
-const styleClasses = computed(() => {
-  const defaultClasses = 'border box-border cursor-pointer'
-  return isSelected
-    ? `${defaultClasses} border-primary`
-    : `${defaultClasses} border-transparent`
-})
-
 const onSelect = () => {
-  emits('select', isSelected)
+  emit('select')
+}
+
+function onKeydown(event: KeyboardEvent) {
+  // Enter or Space: prevent default and select
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    onSelect()
+    return
+  }
 }
 </script>
