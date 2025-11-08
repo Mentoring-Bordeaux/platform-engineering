@@ -36,7 +36,7 @@
   </FormSection>
 
   <!-- Framework Selection Section -->
-  <FormSection title="Framework Selection">
+  <FormSection title="Framework Selection" v-if="showFrameworkSection">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <CardSelect
         v-for="(framework, key) in frameworks"
@@ -50,7 +50,7 @@
   </FormSection>
 
   <!-- Platform Selection Section -->
-  <FormSection title="Platform Selection">
+  <FormSection title="Platform Selection" v-if="showPlatformSection">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <CardSelect
         v-for="(platform, key) in platforms"
@@ -64,7 +64,7 @@
   </FormSection>
 
   <!-- Submit Button -->
-  <div class="w-full flex justify-end">
+  <div class="w-full flex justify-end" v-if="showSubmitButton">
     <u-button
       icon="i-lucide-cog"
       size="md"
@@ -80,6 +80,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { Framework, Platform, Preset } from '~/types'
+
+// Section display logic
+
+const showFrameworkSection = ref(false)
+const showPlatformSection = ref(false)
+const showSubmitButton = ref(false)
 
 // Base Information
 const name = ref('')
@@ -111,6 +117,7 @@ type PresetKey = keyof typeof presets | 'blank'
 const selectedPreset = ref<string | null>(null)
 
 const onPresetSelect = (key: PresetKey) => {
+  showFrameworkSection.value = true
   selectedPreset.value = key
 }
 
@@ -126,6 +133,7 @@ type FrameworkKey = keyof typeof frameworks
 const selectedFramework = ref(new Set<FrameworkKey>())
 
 const onFrameworkSelect = (key: FrameworkKey) => {
+  showPlatformSection.value = true
   if (selectedFramework.value.has(key)) {
     selectedFramework.value.delete(key)
   } else {
@@ -145,6 +153,7 @@ type PlatformKey = keyof typeof platforms
 const selectedPlatform = ref<PlatformKey | null>(null)
 
 const onPlatformSelect = (key: PlatformKey) => {
+  showSubmitButton.value = true
   selectedPlatform.value = key
 }
 
