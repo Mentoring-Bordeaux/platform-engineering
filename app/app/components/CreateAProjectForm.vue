@@ -6,7 +6,10 @@
     @submit="onSubmit"
   >
     <!-- Base Information Section -->
-    <FormSection title="Base Information">
+    <FormSection
+      id="base-info"
+      title="Base Information"
+    >
       <UFormField
         name="name"
         label="Project Name"
@@ -34,7 +37,10 @@
     </FormSection>
 
     <!-- Preset Selection Section -->
-    <FormSection title="Preset">
+    <FormSection
+      id="preset-selection"
+      title="Preset"
+    >
       <UFormField
         name="preset"
         required
@@ -46,7 +52,7 @@
             :title="preset.name"
             :description="preset.description"
             :is-selected="state.preset === key"
-            @select="onPresetSelect(key)"
+            @select="onPresetSelect(key, preset)"
           />
         </div>
         <USeparator label="or" />
@@ -62,6 +68,7 @@
     <!-- Framework Selection Section -->
     <FormSection
       v-if="showFrameworkSection"
+      id="framework-section"
       title="Framework Selection"
     >
       <UFormField
@@ -87,6 +94,7 @@
     <!-- Platform Selection Section -->
     <FormSection
       v-if="showPlatformSection"
+      id="platform-selection"
       title="Platform Selection"
     >
       <UFormField
@@ -131,7 +139,12 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { ref, reactive } from 'vue'
 import { z } from 'zod'
-import { PRESETS, FRAMEWORKS, PLATFORMS } from '~/config/project-options'
+import {
+  PRESETS,
+  FRAMEWORKS,
+  PLATFORMS,
+  type Preset
+} from '~/config/project-options'
 
 // Section display logic
 
@@ -140,9 +153,13 @@ const showPlatformSection = ref(false)
 const showSubmitButton = ref(false)
 const showSuccessMessage = ref(false)
 
-const onPresetSelect = (key: string) => {
+const onPresetSelect = (key: string, preset?: Preset) => {
   showFrameworkSection.value = true
   state.preset = key
+  if (key !== 'blank' && preset) {
+    state.frameworks = preset.frameworks
+    showPlatformSection.value = true
+  }
 }
 
 const onFrameworkSelect = (key: string) => {
