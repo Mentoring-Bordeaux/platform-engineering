@@ -1,206 +1,212 @@
 <template>
-  <!-- Base Information Section -->
-  <FormSection title="Base Information">
-    <u-input
-      v-model="name"
-      label="Name"
-      placeholder="My awesome project"
-      size="md"
-    />
-    <u-textarea
-      v-model="description"
-      label="Description"
-      placeholder="Describe your project..."
-    />
-  </FormSection>
-
-  <!-- Preset Selection Section -->
-  <FormSection title="Preset">
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <CardSelect
-        v-for="(preset, key) in presets"
-        :key="key"
-        :title="preset.name"
-        :description="preset.description"
-        :is-selected="selectedPreset === key"
-        @select="onPresetSelect(key)"
-      />
-    </div>
-    <u-separator label="or" />
-    <CardSelect
-      title="Blank Template"
-      description="Use your own custom template repository."
-      :is-selected="selectedPreset === 'blank'"
-      @select="onPresetSelect('blank')"
-    />
-  </FormSection>
-
-  <!-- Framework Selection Section -->
-  <FormSection
-    v-if="showFrameworkSection"
-    title="Framework Selection"
+  <UForm
+    :schema="CreateAProjectFormSchema"
+    :state="state"
+    class="w-full max-w-4xl"
+    @submit="onSubmit"
   >
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <CardSelect
-        v-for="(framework, key) in frameworks"
-        :key="key"
-        :icon="framework.icon"
-        :title="framework.name"
-        :is-selected="selectedFramework.has(key)"
-        @select="onFrameworkSelect(key)"
-      />
-    </div>
-  </FormSection>
+    <!-- Base Information Section -->
+    <FormSection title="Base Information">
+      <UFormField
+        name="name"
+        label="Project Name"
+        required
+      >
+        <UInput
+          v-model="state.name"
+          placeholder="My awesome project"
+          class="w-full"
+          size="md"
+        />
+      </UFormField>
+      <UFormField
+        name="description"
+        label="Description (optional)"
+        class="w-full"
+      >
+        <UTextarea
+          v-model="state.description"
+          class="w-full"
+          placeholder="A brief description of your project"
+          :rows="3"
+        />
+      </UFormField>
+    </FormSection>
 
-  <!-- Platform Selection Section -->
-  <FormSection
-    v-if="showPlatformSection"
-    title="Platform Selection"
-  >
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <CardSelect
-        v-for="(platform, key) in platforms"
-        :key="key"
-        :icon="platform.icon"
-        :title="platform.name"
-        :is-selected="selectedPlatform === key"
-        @select="onPlatformSelect(key)"
-      />
-    </div>
-  </FormSection>
+    <!-- Preset Selection Section -->
+    <FormSection title="Preset">
+      <UFormField
+        name="preset"
+        required
+      >
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <CardSelect
+            v-for="(preset, key) in PRESETS"
+            :key="key"
+            :title="preset.name"
+            :description="preset.description"
+            :is-selected="state.preset === key"
+            @select="onPresetSelect(key)"
+          />
+        </div>
+        <USeparator label="or" />
+        <CardSelect
+          title="Blank Template"
+          description="Use your own custom template repository."
+          :is-selected="state.preset === 'blank'"
+          @select="onPresetSelect('blank')"
+        />
+      </UFormField>
+    </FormSection>
 
-  <!-- Submit Button -->
-  <div
-    v-if="showSubmitButton"
-    class="flex w-full justify-end"
-  >
-    <u-button
-      icon="i-lucide-cog"
-      size="md"
-      variant="solid"
-      class="cursor-pointer"
-      @click.prevent="onSubmit"
+    <!-- Framework Selection Section -->
+    <FormSection
+      v-if="showFrameworkSection"
+      title="Framework Selection"
     >
-      Configure project
-    </u-button>
-  </div>
+      <UFormField
+        name="frameworks"
+        required
+      >
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Select one or more frameworks for your project
+        </p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <CardSelect
+            v-for="(framework, key) in FRAMEWORKS"
+            :key="key"
+            :icon="framework.icon"
+            :title="framework.name"
+            :is-selected="state.frameworks.includes(key)"
+            @select="onFrameworkSelect(key)"
+          />
+        </div>
+      </UFormField>
+    </FormSection>
+
+    <!-- Platform Selection Section -->
+    <FormSection
+      v-if="showPlatformSection"
+      title="Platform Selection"
+    >
+      <UFormField
+        name="platform"
+        required
+      >
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Choose where to host your project repository
+        </p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <CardSelect
+            v-for="(platform, key) in PLATFORMS"
+            :key="key"
+            :icon="platform.icon"
+            :title="platform.name"
+            :is-selected="state.platform === key"
+            @select="onPlatformSelect(key)"
+          />
+        </div>
+      </UFormField>
+    </FormSection>
+
+    <!-- Submit Button -->
+    <div
+      v-if="showSubmitButton"
+      class="flex w-full justify-end"
+    >
+      <UButton
+        icon="i-lucide-cog"
+        size="md"
+        variant="solid"
+        class="cursor-pointer"
+        type="submit"
+      >
+        Configure project
+      </UButton>
+    </div>
+  </UForm>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Framework, Platform, Preset } from '~/types'
+import type { FormSubmitEvent } from '@nuxt/ui'
+import { ref, reactive } from 'vue'
+import { z } from 'zod'
+import { PRESETS, FRAMEWORKS, PLATFORMS } from '~/config/project-options'
 
 // Section display logic
 
 const showFrameworkSection = ref(false)
 const showPlatformSection = ref(false)
 const showSubmitButton = ref(false)
+const showSuccessMessage = ref(false)
 
-// Base Information
-const name = ref('')
-const description = ref('')
-
-// Presets
-
-const presets = {
-  'nuxt-dotnet': {
-    name: 'Nuxt + Dotnet',
-    description: 'A starter template with Nuxt.js frontend and Dotnet backend.'
-  },
-  'react-dotnet': {
-    name: 'React + Dotnet',
-    description: 'A starter template with React frontend and Dotnet backend.'
-  },
-  'my-awesome-template': {
-    name: 'My Awesome Template',
-    description: 'An awesome template for your my project.'
-  },
-  'react-nestjs': {
-    name: 'React + NestJS',
-    description: 'A starter template with React frontend and NestJS backend.'
-  }
-} as const satisfies Record<string, Preset>
-
-type PresetKey = keyof typeof presets | 'blank'
-
-const selectedPreset = ref<string | null>(null)
-
-const onPresetSelect = (key: PresetKey) => {
+const onPresetSelect = (key: string) => {
   showFrameworkSection.value = true
-  selectedPreset.value = key
+  state.preset = key
 }
 
-// Frameworks
-const frameworks = {
-  html5: { name: 'Vanilla', icon: 'devicon:html5' },
-  vue: { name: 'Vue.js', icon: 'devicon:vuejs' },
-  react: { name: 'React', icon: 'devicon:react' }
-} as const satisfies Record<string, Framework>
-
-type FrameworkKey = keyof typeof frameworks
-
-const selectedFramework = ref(new Set<FrameworkKey>())
-
-const onFrameworkSelect = (key: FrameworkKey) => {
+const onFrameworkSelect = (key: string) => {
   showPlatformSection.value = true
-  if (selectedFramework.value.has(key)) {
-    selectedFramework.value.delete(key)
+  if (state.frameworks.includes(key)) {
+    state.frameworks = state.frameworks.filter(fw => fw !== key)
   } else {
-    selectedFramework.value.add(key)
+    state.frameworks = [...(state.frameworks || []), key]
   }
 }
 
-// Platforms
-
-const platforms = {
-  github: { name: 'GitHub', icon: 'devicon:github' },
-  gitlab: { name: 'GitLab', icon: 'devicon:gitlab' }
-} as const satisfies Record<string, Platform>
-
-type PlatformKey = keyof typeof platforms
-
-const selectedPlatform = ref<PlatformKey | null>(null)
-
-const onPlatformSelect = (key: PlatformKey) => {
+const onPlatformSelect = (key: string) => {
   showSubmitButton.value = true
-  selectedPlatform.value = key
+  state.platform = key
 }
+
+// Schema for form data validation
+
+const CreateAProjectFormSchema = z.object({
+  name: z.string().min(1, 'Project name is required'),
+  description: z.string().optional(),
+  preset: z.literal(Object.keys(PRESETS)).or(z.literal('blank')),
+  frameworks: z
+    .array(z.string())
+    .min(1, 'At least one framework must be selected')
+    .refine(
+      frameworks =>
+        frameworks.every(fw => Object.keys(FRAMEWORKS).includes(fw)),
+      {
+        message: `Frameworks must be one of: ${Object.keys(FRAMEWORKS).join(', ')}`
+      }
+    ),
+  platform: z.literal(Object.keys(PLATFORMS))
+})
+
+type CreateAProjectFormType = z.infer<typeof CreateAProjectFormSchema>
+
+const state = reactive<CreateAProjectFormType>({
+  name: '',
+  description: '',
+  preset: '',
+  frameworks: [],
+  platform: ''
+})
 
 // Submit action
 
-interface FormData {
-  name: string
-  description: string
-  preset: string
-  frameworks: FrameworkKey[]
-  platform: PlatformKey
-}
+async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
+  console.log('Submitting form...')
+  showSuccessMessage.value = false
 
-const onSubmit = () => {
-  if (!name.value) {
-    alert('Please enter a project name.')
+  const validation = CreateAProjectFormSchema.safeParse(event.data)
+
+  if (!validation.success) {
+    console.error('Form validation failed:', validation.error)
+
+    // Scroll to top to show errors
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
-  if (!selectedPlatform.value) {
-    alert('Please select a platform.')
-    return
-  }
-  const frameworksArray = Array.from(selectedFramework.value)
-  if (frameworksArray.length === 0) {
-    alert('Please select at least one framework.')
-    return
-  }
-  if (!selectedPreset.value) {
-    alert('Please select a preset.')
-    return
-  }
-  const formObject: FormData = {
-    name: name.value,
-    description: description.value,
-    preset: selectedPreset.value,
-    frameworks: frameworksArray,
-    platform: selectedPlatform.value
-  }
-  console.log('Form submitted with data:', formObject)
+
+  console.log('Form submitted with data:', validation.data)
+
+  // Show success message
+  showSuccessMessage.value = true
 }
 </script>

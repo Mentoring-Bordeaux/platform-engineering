@@ -3,7 +3,7 @@
   "semi": false,
   "singleQuote": true,
   "trailingComma": "none",
-  "arrowParens": "always",
+  "arrowParens": "avoid",
   "singleAttributePerLine": true,
   "plugins": ["prettier-plugin-tailwindcss"]
 }
