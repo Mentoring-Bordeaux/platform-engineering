@@ -1,6 +1,6 @@
 <template>
-  <UContainer class="flex flex-col items-center w-full py-8">
-    <div class="max-w-4xl w-full">
+  <UContainer class="flex w-full flex-col items-center py-8">
+    <div class="w-full max-w-4xl">
       <CreateAProjectForm />
     </div>
   </UContainer>
