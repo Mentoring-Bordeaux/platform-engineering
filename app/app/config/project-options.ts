@@ -1,11 +1,15 @@
+import type { ConfigOption } from '~/types'
+
 export interface Framework {
   name: string
   icon: string
+  config: Record<string, ConfigOption>
 }
 
 export interface Platform {
   name: string
   icon: string
+  config: Record<string, ConfigOption>
 }
 
 /**
@@ -15,27 +19,75 @@ export interface Platform {
 export const FRAMEWORKS = {
   html5: {
     name: 'Vanilla',
-    icon: 'devicon:html5'
+    icon: 'devicon:html5',
+    config: {
+      description: {
+        type: 'textarea',
+        label: 'Description',
+        description: 'A brief description of the project.',
+        default: 'A vanilla HTML5 project'
+      }
+    }
   },
   vue: {
     name: 'Vue.js',
-    icon: 'devicon:vuejs'
+    icon: 'devicon:vuejs',
+    config: {
+      description: {
+        type: 'textarea',
+        label: 'Description',
+        description: 'A brief description of the project.',
+        default: 'A Vue.js project'
+      }
+    }
   },
   react: {
     name: 'React',
-    icon: 'devicon:react'
+    icon: 'devicon:react',
+    config: {
+      description: {
+        type: 'textarea',
+        label: 'Description',
+        description: 'A brief description of the project.',
+        default: 'A React project'
+      }
+    }
   },
   nuxt: {
     name: 'Nuxt.js',
-    icon: 'devicon:nuxtjs'
+    icon: 'devicon:nuxtjs',
+    config: {
+      description: {
+        type: 'textarea',
+        label: 'Description',
+        description: 'A brief description of the project.',
+        default: 'A Nuxt.js project'
+      }
+    }
   },
   dotnet: {
     name: 'Dotnet',
-    icon: 'devicon:dot-net'
+    icon: 'devicon:dot-net',
+    config: {
+      description: {
+        type: 'textarea',
+        label: 'Description',
+        description: 'A brief description of the project.',
+        default: 'A Dotnet project'
+      }
+    }
   },
   nestjs: {
     name: 'NestJS',
-    icon: 'devicon:nestjs'
+    icon: 'devicon:nestjs',
+    config: {
+      description: {
+        type: 'textarea',
+        label: 'Description',
+        description: 'A brief description of the project.',
+        default: 'A NestJS project'
+      }
+    }
   }
 } as const satisfies Record<string, Framework>
 
@@ -46,11 +98,56 @@ export const FRAMEWORKS = {
 export const PLATFORMS = {
   github: {
     name: 'GitHub',
-    icon: 'devicon:github'
+    icon: 'devicon:github',
+    config: {
+      name: {
+        type: 'text',
+        label: 'Repository Name',
+        description: 'The name of the GitHub repository to create.'
+      },
+      description: {
+        type: 'textarea',
+        label: 'Repository Description',
+        description: 'A brief description of the GitHub repository.',
+        default: ''
+      },
+      visibility: {
+        type: 'enum',
+        label: 'Repository Visibility',
+        description: 'Whether the repository should be public or private.',
+        values: ['public', 'private'],
+        default: 'private'
+      },
+      owner: {
+        type: 'text',
+        label: 'Repository Owner',
+        description:
+          'The owner (user or organization) of the GitHub repository.'
+      },
+      template_owner: {
+        type: 'text',
+        label: 'Template Owner',
+        description:
+          'The owner (user or organization) of the template repository.'
+      },
+      template_repo: {
+        type: 'text',
+        label: 'Template Repository',
+        description: 'The name of the template repository.'
+      }
+    }
   },
   gitlab: {
     name: 'GitLab',
-    icon: 'devicon:gitlab'
+    icon: 'devicon:gitlab',
+    config: {
+      description: {
+        type: 'textarea',
+        label: 'Description',
+        description: 'A brief description of the project.',
+        default: 'A vanilla HTML5 project'
+      }
+    }
   }
 } as const satisfies Record<string, Platform>
 
@@ -91,3 +188,11 @@ export const PRESETS = {
 export type PresetKey = keyof typeof PRESETS
 export type FrameworkKey = keyof typeof FRAMEWORKS
 export type PlatformKey = keyof typeof PLATFORMS
+
+export interface ProjectData {
+  name: string
+  description?: string
+  preset: string
+  frameworks: FrameworkKey[]
+  platform: PlatformKey
+}
