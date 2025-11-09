@@ -143,8 +143,15 @@ import {
   PRESETS,
   FRAMEWORKS,
   PLATFORMS,
-  type Preset
+  type Preset,
+  type ProjectData,
+  type FrameworkKey,
+  type PlatformKey
 } from '~/config/project-options'
+
+const emit = defineEmits<{
+  submit: [data: ProjectData]
+}>()
 
 // Section display logic
 
@@ -223,7 +230,12 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
 
   console.log('Form submitted with data:', validation.data)
 
-  // Show success message
-  showSuccessMessage.value = true
+  const projectData: ProjectData = {
+    ...validation.data,
+    frameworks: validation.data.frameworks as FrameworkKey[],
+    platform: validation.data.platform as PlatformKey
+  }
+
+  emit('submit', projectData)
 }
 </script>
