@@ -166,6 +166,8 @@ const onPresetSelect = (key: string, preset?: Preset) => {
   if (key !== 'blank' && preset) {
     state.frameworks = preset.frameworks
     showPlatformSection.value = true
+  } else {
+    state.frameworks = []
   }
 }
 
