@@ -1,6 +1,13 @@
 name: cd-deploy
 
 on:
+  push:
+    branches: [main, feature/pipelines]
+    paths:
+      - 'api/**'
+      - 'app/**'
+      - 'infrastructure/**'
+      - '.github/workflows/**'
   workflow_run:
     workflows: ["ci-build"]
     types:
