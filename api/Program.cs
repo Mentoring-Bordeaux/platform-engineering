@@ -1,3 +1,6 @@
+using Pulumi.Automation;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddEnvironmentVariables();
@@ -34,28 +37,32 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+app.MapPost("/create-staticweb", async () =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var stackName = "storage-staticweb-stack";
+    WorkspaceStack? stack = null;
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    var executingDir = Directory.GetCurrentDirectory();
+    var workingDir = Path.Combine(executingDir, "pulumiPrograms", "staticWebApp");
+
+    try
+    {
+        var stackArgs = new LocalProgramArgs(stackName, workingDir);
+        stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
+
+        var result = await stack.UpAsync(new UpOptions
+        {
+            OnStandardOutput = Console.WriteLine,
+            OnStandardError = Console.Error.WriteLine
+        });
+
+        var endpoint = result.Outputs["staticWebsiteUrl"].Value.ToString();
+        return Results.Ok(new { Url = endpoint });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Erreur lors du déploiement : {ex.Message}");
+    }
+});
 
 app.Run();
-
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
