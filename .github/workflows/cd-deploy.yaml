@@ -25,7 +25,7 @@ permissions:
 
 env:
   APP_LOCATION: "app" # location of your client code
-  APP_ARTIFACT_LOCATION: "app/.output/" # location of client code build output
+  APP_ARTIFACT_LOCATION: "app/.output/public" # location of client code build output
 jobs:
   download_infra_outputs:
     runs-on: ubuntu-latest
@@ -114,7 +114,6 @@ jobs:
       pull-requests: write 
     if: github.event_name == 'push' || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
     steps:
       - uses: actions/checkout@v4
         with:
@@ -130,16 +129,17 @@ jobs:
           branch: ${{ github.ref_name }}
           if_no_artifact_found: fail  # fail fast if CI didn't produce it
 
-      - name: Build And Deploy
-        id: builddeploy
+      - name: Deploy
+        id: deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }} 
           repo_token: ${{ secrets.GITHUB_TOKEN }} 
           action: "upload"
-          app_location: ${{ env.APP_LOCATION }}
-          app_artifact_location: ${{ env.APP_ARTIFACT_LOCATION }}
+          app_location: ${{ env.APP_ARTIFACT_LOCATION }}
           skip_app_build: true
+          skip_api_build: true
+          output_location: ''
 
   close_pull_request_job:
     environment: development
