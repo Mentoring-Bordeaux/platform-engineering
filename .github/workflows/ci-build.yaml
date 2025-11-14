@@ -182,11 +182,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4  
       - name: Trigger cd-deploy workflow
-        if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ref="${GITHUB_REF#refs/heads/}"
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            ref="${{ github.event.workflow_run.head_branch }}"
+          else
+            ref="${GITHUB_REF_NAME}"
+          fi
           curl -s -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
