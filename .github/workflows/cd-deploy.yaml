@@ -1,4 +1,4 @@
-name: ci-deploy
+name: cd-deploy
 
 on:
   workflow_run:
