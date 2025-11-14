@@ -173,7 +173,7 @@ jobs:
             ${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest
           cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache
           cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache,mode=max
-  ci-deploy:
+  cd-deploy:
     needs: [build-and-push, frontend]
     environment: development
     if: success()

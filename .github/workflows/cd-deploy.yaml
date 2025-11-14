@@ -5,6 +5,7 @@ on:
     workflows: ["ci-build"]
     types:
       - completed
+  workflow_dispatch:
 
 env:
   APP_LOCATION: "app" # location of your client code
