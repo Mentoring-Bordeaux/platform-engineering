@@ -114,7 +114,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nuxt-output
-          path: app/.output
+          path: ./.output
 
   build-and-push:
     environment: development
