@@ -21,7 +21,7 @@ permissions:
 
 env:
   APP_LOCATION: "app" # location of your client code
-  APP_ARTIFACT_LOCATION: "app/.output/" # location of client code build output
+  APP_ARTIFACT_LOCATION: "app/.output/public" # location of client code build output
 jobs:
   download_infra_outputs:
     runs-on: ubuntu-latest
@@ -115,6 +115,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Download Nuxt build artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          # This must match your ci-build workflow file name
+          workflow: ci-build.yaml
+          workflow_conclusion: success
+          name: nuxt-output           # matches `upload-artifact` name in ci-build
+          path: app/.output           # restore exactly where SWA expects it
+          branch: ${{ github.ref_name }}
+          if_no_artifact_found: fail  # fail fast if CI didn't produce it
+
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
