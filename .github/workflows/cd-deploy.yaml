@@ -124,8 +124,8 @@ jobs:
           run_id: ${{ github.event.workflow_run.id }}
           workflow: ci-build.yaml
           workflow_conclusion: success
-          name: nuxt-output           # matches `upload-artifact` name in ci-build
-          path: app/.output           # restore exactly where SWA expects it
+          name: nuxt-output
+          path: app/app/.output
           branch: ${{ github.ref_name }}
           if_no_artifact_found: fail  # fail fast if CI didn't produce it
 
@@ -136,7 +136,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }} 
           repo_token: ${{ secrets.GITHUB_TOKEN }} 
           action: "upload"
-          app_location: ".output/public"
+          app_location: "app/.output/public"
           skip_app_build: true
           skip_api_build: true
           output_location: ''
