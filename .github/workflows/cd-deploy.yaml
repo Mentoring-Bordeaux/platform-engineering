@@ -122,6 +122,8 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           run_id: ${{ github.event.workflow_run.id }}
+          workflow: ci-build.yaml
+          workflow_conclusion: success
           name: nuxt-output
           path: app/.output
           branch: ${{ github.ref_name }}
