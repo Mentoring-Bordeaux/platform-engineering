@@ -140,7 +140,7 @@ export const PLATFORMS = {
 export interface Preset {
   name: string
   description: string
-  resource: (keyof typeof RESOURCES)[]
+  resources: (keyof typeof RESOURCES)[]
 }
 
 /**
@@ -150,32 +150,32 @@ export const PRESETS = {
   'my-awesome-template': {
     name: 'My Awesome Template',
     description: 'An awesome template for your my project.',
-    resource: ['swa', 'swa', 'azure-app-service']
+    resources: ['swa', 'swa', 'azure-app-service']
   },
   'swa-starter': {
     name: 'Static Web App Starter',
     description: 'A starter template for Static Web Apps.',
-    resource: ['swa']
+    resources: ['swa']
   },
   'azure-app-service-starter': {
     name: 'Azure App Service Starter',
     description: 'A starter template for Azure App Service.',
-    resource: ['azure-app-service']
+    resources: ['azure-app-service']
   },
   'aws-lambda-starter': {
     name: 'AWS Lambda Starter',
     description: 'A starter template for AWS Lambda.',
-    resource: ['aws-lambda']
+    resources: ['aws-lambda']
   },
   'swa-app-service-combo': {
     name: 'SWA + App Service Combo',
     description: 'A combo template for Static Web Apps and Azure App Service.',
-    resource: ['swa', 'azure-app-service']
+    resources: ['swa', 'azure-app-service']
   },
   'mathieu-s-super-template': {
     name: "Mathieu Chaillon's Super Template",
     description: 'The ultimate template for your next project.',
-    resource: ['swa', 'swa', 'swa', 'swa', 'swa', 'swa', 'azure-cosmosdb', 'azure-app-service', 'azure-app-service']
+    resources: ['swa', 'swa', 'swa', 'swa', 'swa', 'swa', 'azure-cosmosdb', 'azure-app-service', 'azure-app-service']
   }
 } as const satisfies Record<string, Preset>
 
@@ -184,10 +184,15 @@ export type PresetKey = keyof typeof PRESETS
 export type ResourceKey = keyof typeof RESOURCES
 export type PlatformKey = keyof typeof PLATFORMS
 
+export interface ResourceOption {
+  key: ResourceKey
+  id: string
+}
+
 export interface ProjectData {
   name: string
   description?: string
   preset: string
-  resource: ResourceKey[]
+  resource: ResourceOption[]
   platform: PlatformKey
 }
