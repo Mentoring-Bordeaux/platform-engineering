@@ -17,16 +17,11 @@
 
 public class CreateRepoRequest
 {
-    // GitHub Personal Access Token (PAT) with repo creation permissions
-    public required string GithubToken { get; set; }
     // Repository name to create
     public required string RepoName { get; set; }
     // Optional description
     public string? Description { get; set; }
     // Optional: whether the repository should be private. Defaults to true.
     public bool Private { get; set; } = true;
-
-    // Optional: organization name where the repository should be created. If null or empty, creates under the authenticated user's account.
-    public string? OrgName { get; set; }
 }
 

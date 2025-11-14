@@ -5,7 +5,8 @@ using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Pulumi.Automation;
 using System.Text.RegularExpressions;
-
+using Microsoft.Extensions.Configuration;
+using DotNetEnv;
 
 //////////////////////////////////////////////// Configure the API  ////////////////////////////////////////////////
 
@@ -13,7 +14,9 @@ using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddEnvironmentVariables();
+DotNetEnv.Env.Load();
+
+
 
 // Configure CORS to allow requests from Nuxt 4 development server
 builder.Services.AddCors(options =>
@@ -22,7 +25,8 @@ builder.Services.AddCors(options =>
         policy =>
         {
             // Retrieve the Nuxt app URL from environment variables and allow it
-            var nuxtAppUrl = builder.Configuration["NUXT_APP_URL"] ?? "http://localhost:3000"; // Can't be null  (TODO: throw error if null?)
+            var nuxtAppUrl = System.Environment.GetEnvironmentVariable("NUXT_APP_URL") ?? "http://localhost:3001"; // Can't be null  (TODO: throw error if null?)
+            Console.WriteLine($"Configuring CORS to allow requests from: {nuxtAppUrl}");
             policy.WithOrigins(nuxtAppUrl)
                   .AllowAnyHeader()
                   .AllowAnyMethod();
@@ -39,7 +43,6 @@ var app = builder.Build();
 // Use the configured CORS policy
 app.UseCors("NuxtPolicy");
 
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -51,33 +54,39 @@ app.UseHttpsRedirection();
 
 ////////////////////////////////////////////// Pulumi Automation API Logic  ////////////////////////////////////////////////
 
+// Retrieve GitHub token from environment variables
+var githubToken = System.Environment.GetEnvironmentVariable("GITHUB_TOKEN");
 
-
-async Task<IResult> CreateGitHubRepository(CreateRepoRequest request)
+// Method to create a GitHub repository using Pulumi Automation API
+async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfiguration config)
 {
-
-    var stackName = "github-repo-stack";
+    var stackName = "github-repo-stack" + request.RepoName.Replace(" ", "-").ToLowerInvariant();
     var stack = null as WorkspaceStack;
 
     var executingDir = Directory.GetCurrentDirectory();
     var workingDir = Path.Combine(executingDir, "pulumiPrograms", "github");
     try
     {
-
-
         var stackArgs = new LocalProgramArgs(stackName, workingDir);
         stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
 
-        await stack.SetConfigAsync("githubToken", new ConfigValue(request.GithubToken));
+
+        if (string.IsNullOrEmpty(githubToken))
+        {
+            return Results.Problem("GitHub token is not provided in the environment variables.", statusCode: 401);
+        }
+        await stack.SetConfigAsync("githubToken", new ConfigValue(githubToken));
         await stack.SetConfigAsync("repoName", new ConfigValue(request.RepoName));
         if (request.Description != null && request.Description != "")
         {
             await stack.SetConfigAsync("description", new ConfigValue(request.Description));
         }
         await stack.SetConfigAsync("isPrivate", new ConfigValue(request.Private.ToString().ToLowerInvariant()));
-        if (request.OrgName != null && request.OrgName != "")
+
+        var orgName = Environment.GetEnvironmentVariable("ORGANIZATION_NAME"); ;
+        if (orgName != null && orgName != "")
         {
-            await stack.SetConfigAsync("orgName", new ConfigValue(request.OrgName));
+            await stack.SetConfigAsync("orgName", new ConfigValue(orgName));
         }
 
         // Run the Pulumi program
@@ -85,8 +94,6 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request)
         {
             OnStandardOutput = (output) => Console.WriteLine(output),
             OnStandardError = (error) => Console.WriteLine($"ERROR: {error}")
-
-
         });
 
         // Retrieve outputs
@@ -164,14 +171,15 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request)
 // Define the request model for creating a repository
 app.MapPost("/create-repo", async (CreateRepoRequest request) =>
 {
-    if (string.IsNullOrEmpty(request.GithubToken) || string.IsNullOrEmpty(request.RepoName))
+    if (string.IsNullOrEmpty(request.RepoName))
     {
-        return Results.BadRequest("The 'GithubToken' and 'RepoName' fields are required.");
+        return Results.BadRequest("The 'RepoName' field is required.");
     }
 
     // Call the method to create the repository
     var result = await CreateGitHubRepository(
-        request
+        request,
+        app.Configuration
     );
     return result;
 

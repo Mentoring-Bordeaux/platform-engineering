@@ -5,11 +5,9 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "GithubToken": "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN",
     "RepoName": "new-pulumi-repo",
     "Private": true,
     "Description": "The description in the README of the repo", //Optionnal
-    "OrgName": ""  // Leave empty if creating in your personal account
 }
 
 ###
