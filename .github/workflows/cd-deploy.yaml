@@ -56,6 +56,7 @@ jobs:
           echo "RG=$resourceGroupName" >> $GITHUB_ENV
           echo "STATIC_WEB_APP_URL=$staticWebUrl" >> $GITHUB_ENV
           echo "AZURE_STATIC_WEB_APPS_API_TOKEN=$staticWebAppDeploymentToken" >> $GITHUB_ENV
+          echo "infra_loaded=true" >> $GITHUB_OUTPUT
 
   deploy-api-aca:
     environment: development
