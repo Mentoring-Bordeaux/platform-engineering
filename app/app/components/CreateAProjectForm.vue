@@ -65,32 +65,6 @@
       </UFormField>
     </FormSection>
 
-    <!-- Resource Selection Section -->
-    <FormSection
-      v-if="showResourceSection"
-      id="resource-section"
-      title="Resource Selection"
-    >
-      <UFormField
-        name="resource"
-        required
-      >
-        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Select one or more resource for your project
-        </p>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <CardSelect
-            v-for="(resource, key) in RESOURCES"
-            :key="key"
-            :icon="resource.icon"
-            :title="resource.name"
-            :is-selected="state.resource.includes(key)"
-            @select="onResourceSelect(key)"
-          />
-        </div>
-      </UFormField>
-    </FormSection>
-
     <!-- Platform Selection Section -->
     <FormSection
       v-if="showPlatformSection"
@@ -155,28 +129,17 @@ const emit = defineEmits<{
 
 // Section display logic
 
-const showResourceSection = ref(false)
 const showPlatformSection = ref(false)
 const showSubmitButton = ref(false)
 const showSuccessMessage = ref(false)
 
 const onPresetSelect = (key: string, preset?: Preset) => {
-  showResourceSection.value = true
+  showPlatformSection.value = true
   state.preset = key
   if (key !== 'blank' && preset) {
     state.resource = preset.resource
-    showPlatformSection.value = true
   } else {
     state.resource = []
-  }
-}
-
-const onResourceSelect = (key: string) => {
-  showPlatformSection.value = true
-  if (state.resource.includes(key)) {
-    state.resource = state.resource.filter(fw => fw !== key)
-  } else {
-    state.resource = [...(state.resource || []), key]
   }
 }
 
