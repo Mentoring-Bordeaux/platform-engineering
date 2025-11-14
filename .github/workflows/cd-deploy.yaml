@@ -129,6 +129,14 @@ jobs:
           branch: ${{ github.ref_name }}
           if_no_artifact_found: fail  # fail fast if CI didn't produce it
 
+      - name: Debug - Check artifact contents
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Contents of app/.output:"
+          ls -la app/.output/ || echo "Directory not found"
+          echo "Contents of app/.output/public:"
+          ls -la app/.output/public/ || echo "Directory not found"
+          
       - name: Deploy to Azure Static Web App
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
