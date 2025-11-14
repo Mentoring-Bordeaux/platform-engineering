@@ -120,7 +120,8 @@ import {
   type Preset,
   type ProjectData,
   type PlatformKey,
-  type ResourceOption
+  type ResourceOption,
+  type PresetKey
 } from '~/config/project-options'
 
 const emit = defineEmits<{
@@ -131,7 +132,6 @@ const emit = defineEmits<{
 
 const showPlatformSection = ref(false)
 const showSubmitButton = ref(false)
-const showSuccessMessage = ref(false)
 
 const onPresetSelect = (key: string, preset?: Preset) => {
   showPlatformSection.value = true
@@ -139,7 +139,7 @@ const onPresetSelect = (key: string, preset?: Preset) => {
   if (key !== 'blank' && preset) {
     state.resources = preset.resources.map(resourceKey => ({
       key: resourceKey,
-      id: `${resourceKey}-${Math.random().toString(36)}`
+      id: `${resourceKey}-${crypto.randomUUID()}`
     }))
     console.log('Preset selected, resources updated:', state.resources)
   } else {
@@ -185,7 +185,6 @@ const state = reactive<CreateAProjectFormType>({
 
 async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
   console.log('Submitting form...')
-  showSuccessMessage.value = false
 
   const validation = CreateAProjectFormSchema.safeParse(event.data)
 
@@ -201,7 +200,8 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
 
   const projectData = {
     ...validation.data,
-    resource: validation.data.resources as ResourceOption[],
+    preset: validation.data.preset as PresetKey,
+    resources: validation.data.resources as ResourceOption[],
     platform: validation.data.platform as PlatformKey
   } satisfies ProjectData
 

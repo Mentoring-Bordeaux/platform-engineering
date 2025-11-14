@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col gap-2 p-4">
-    <h1>{{ props.title }}</h1>
+    <h2>{{ props.title }}</h2>
     <slot />
   </div>
 </template>

@@ -130,8 +130,8 @@ export const PLATFORMS = {
       description: {
         type: 'textarea',
         label: 'Description',
-        description: 'A brief description of the project.',
-        default: 'A vanilla HTML5 project'
+        description: 'A brief description of the Gitlab repository.',
+        default: ''
       }
     }
   }
@@ -149,7 +149,7 @@ export interface Preset {
 export const PRESETS = {
   'my-awesome-template': {
     name: 'My Awesome Template',
-    description: 'An awesome template for your my project.',
+    description: 'An awesome template for your next project.',
     resources: ['swa', 'swa', 'azure-app-service']
   },
   'swa-starter': {
@@ -192,7 +192,7 @@ export interface ResourceOption {
 export interface ProjectData {
   name: string
   description?: string
-  preset: string
-  resource: ResourceOption[]
+  preset: PresetKey
+  resources: ResourceOption[]
   platform: PlatformKey
 }
