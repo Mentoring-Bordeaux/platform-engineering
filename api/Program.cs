@@ -108,6 +108,7 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
         stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
 
 
+
         if (string.IsNullOrEmpty(githubToken))
         {
             return Results.Problem("GitHub token is not provided in the environment variables.", statusCode: 401);
@@ -235,3 +236,34 @@ app.Run();
 
 
 
+app.MapPost("/create-staticweb", async () =>
+{
+    var stackName = "storage-staticweb-stack";
+    WorkspaceStack? stack = null;
+
+    var executingDir = Directory.GetCurrentDirectory();
+    var workingDir = Path.Combine(executingDir, "pulumiPrograms", "staticWebApp");
+
+try
+    {
+        var stackArgs = new LocalProgramArgs(stackName, workingDir);
+        stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
+
+
+
+        var result = await stack.UpAsync(new UpOptions
+        {
+            OnStandardOutput = Console.WriteLine,
+            OnStandardError = Console.Error.WriteLine
+        });
+
+        var endpoint = result.Outputs["staticWebsiteUrl"].Value.ToString();
+        return Results.Ok(new { Url = endpoint });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Erreur lors du déploiement : {ex.Message}");
+    }
+});
+
+app.Run();
