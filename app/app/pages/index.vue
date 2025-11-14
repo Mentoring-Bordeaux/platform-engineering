@@ -1,34 +1,23 @@
 <template>
-  <div>
-    <UPageHero title="First Page - Platform Engineering" description="Example to wait the mockup of the homepage">
-      <UButton @click="askTheWeather" color="primary" size="md" class="mt-6">
-        I want to know the weather!
-      </UButton>
-      {{ weatherAnswer }}
-    </UPageHero>
-
-  </div>
+  <UContainer class="flex w-full flex-col items-center py-8">
+    <CreateAProjectForm
+      v-if="!projectData"
+      @submit="setProjectData"
+    />
+    <ProjectConfigurationForm
+      v-if="projectData"
+      :project-data="projectData"
+      @back="projectData = null"
+    />
+  </UContainer>
 </template>
 
-
 <script setup lang="ts">
+import type { ProjectData } from '~/config/project-options'
 
-import { ref } from 'vue'
-const config = useRuntimeConfig()
+const projectData = ref<ProjectData | null>(null)
 
-const weatherAnswer = ref('')
-
-async function askTheWeather() {
-  try {
-    const apiUrl = config.public.apiBase + '/weatherforecast'
-    const weatherData = await $fetch(apiUrl)
-
-    weatherAnswer.value = JSON.stringify(weatherData, null, 2)
-  } catch (error) {
-    console.error('Error fetching weather data:', error)
-    alert('Failed to fetch weather data. Check console for details.')
-  }
+const setProjectData = (data: ProjectData) => {
+  projectData.value = data
 }
-
-
 </script>
