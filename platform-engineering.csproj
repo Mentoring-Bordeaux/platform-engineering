@@ -1,0 +1,20 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.0.0">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>e8cb1902-02ef-4dc9-b673-0fa625c3b677</UserSecretsId>
+    <DefaultItemExcludes>$(DefaultItemExcludes);api/**;app/**;infrastructure/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="api\api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.NodeJS.Extensions" Version="9.9.0" />
+  </ItemGroup>
+
+</Project>
