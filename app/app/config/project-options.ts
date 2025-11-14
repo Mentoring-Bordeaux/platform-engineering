@@ -1,6 +1,6 @@
 import type { ConfigOption } from '~/types'
 
-export interface Framework {
+export interface Resource {
   name: string
   icon: string
   config: Record<string, ConfigOption>
@@ -13,87 +13,73 @@ export interface Platform {
 }
 
 /**
- * Available frameworks for project creation
- * Users can select multiple frameworks
+ * Available resources for project creation
  */
-export const FRAMEWORKS = {
-  html5: {
-    name: 'Vanilla',
-    icon: 'devicon:html5',
+export const RESOURCES = {
+  swa: {
+    name: 'Static Web App',
+    icon: 'devicon:azure',
     config: {
+      name: {
+        type: 'text',
+        label: 'Project Name',
+        description: 'The name of the Static Web App project.'
+      },
+      framework: {
+        type: 'enum',
+        label: 'Framework',
+        description: 'The framework used for the Static Web App.',
+        values: ['vanilla', 'react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxtjs'],
+        default: 'vanilla'
+      },
       description: {
         type: 'textarea',
         label: 'Description',
         description: 'A brief description of the project.',
-        default: 'A vanilla HTML5 project'
+        default: 'A blank Static Web App project'
       }
     }
   },
-  vue: {
-    name: 'Vue.js',
-    icon: 'devicon:vuejs',
+  'azure-app-service': {
+    name: 'Azure App Service',
+    icon: 'devicon:azure',
     config: {
       description: {
         type: 'textarea',
         label: 'Description',
         description: 'A brief description of the project.',
-        default: 'A Vue.js project'
+        default: 'A blank Azure App Service project'
       }
     }
   },
-  react: {
-    name: 'React',
-    icon: 'devicon:react',
+  'azure-cosmosdb': {
+    name: 'Azure Cosmos DB',
+    icon: 'devicon:azure',
     config: {
       description: {
         type: 'textarea',
         label: 'Description',
         description: 'A brief description of the project.',
-        default: 'A React project'
+        default: 'A blank Azure Cosmos DB project'
       }
     }
   },
-  nuxt: {
-    name: 'Nuxt.js',
-    icon: 'devicon:nuxtjs',
+  'aws-lambda': {
+    name: 'AWS Lambda',
+    icon: 'devicon:amazonwebservices',
     config: {
       description: {
         type: 'textarea',
         label: 'Description',
         description: 'A brief description of the project.',
-        default: 'A Nuxt.js project'
+        default: 'A blank AWS Lambda project'
       }
     }
   },
-  dotnet: {
-    name: 'Dotnet',
-    icon: 'devicon:dot-net',
-    config: {
-      description: {
-        type: 'textarea',
-        label: 'Description',
-        description: 'A brief description of the project.',
-        default: 'A Dotnet project'
-      }
-    }
-  },
-  nestjs: {
-    name: 'NestJS',
-    icon: 'devicon:nestjs',
-    config: {
-      description: {
-        type: 'textarea',
-        label: 'Description',
-        description: 'A brief description of the project.',
-        default: 'A NestJS project'
-      }
-    }
-  }
-} as const satisfies Record<string, Framework>
+} as const satisfies Record<string, Resource>
 
 /**
  * Available hosting platforms for repositories
- * Users must select exactly one platform
  */
 export const PLATFORMS = {
   github: {
@@ -154,45 +140,54 @@ export const PLATFORMS = {
 export interface Preset {
   name: string
   description: string
-  frameworks: (keyof typeof FRAMEWORKS)[]
+  resource: (keyof typeof RESOURCES)[]
 }
 
 /**
  * Available project presets
- * These are pre-configured templates with specific tech stacks
  */
 export const PRESETS = {
-  'nuxt-dotnet': {
-    name: 'Nuxt + Dotnet',
-    description: 'A starter template with Nuxt.js frontend and Dotnet backend.',
-    frameworks: ['nuxt', 'dotnet']
-  },
-  'react-dotnet': {
-    name: 'React + Dotnet',
-    description: 'A starter template with React frontend and Dotnet backend.',
-    frameworks: ['react', 'dotnet']
-  },
   'my-awesome-template': {
     name: 'My Awesome Template',
     description: 'An awesome template for your my project.',
-    frameworks: []
+    resource: ['swa', 'swa', 'azure-app-service']
   },
-  'react-nestjs': {
-    name: 'React + NestJS',
-    description: 'A starter template with React frontend and NestJS backend.',
-    frameworks: ['react', 'nestjs']
+  'swa-starter': {
+    name: 'Static Web App Starter',
+    description: 'A starter template for Static Web Apps.',
+    resource: ['swa']
+  },
+  'azure-app-service-starter': {
+    name: 'Azure App Service Starter',
+    description: 'A starter template for Azure App Service.',
+    resource: ['azure-app-service']
+  },
+  'aws-lambda-starter': {
+    name: 'AWS Lambda Starter',
+    description: 'A starter template for AWS Lambda.',
+    resource: ['aws-lambda']
+  },
+  'swa-app-service-combo': {
+    name: 'SWA + App Service Combo',
+    description: 'A combo template for Static Web Apps and Azure App Service.',
+    resource: ['swa', 'azure-app-service']
+  },
+  'mathieu-s-super-template': {
+    name: "Mathieu Chaillon's Super Template",
+    description: 'The ultimate template for your next project.',
+    resource: ['swa', 'swa', 'swa', 'swa', 'swa', 'swa', 'azure-cosmosdb', 'azure-app-service', 'azure-app-service']
   }
 } as const satisfies Record<string, Preset>
 
 // Export types for type-safe keys
 export type PresetKey = keyof typeof PRESETS
-export type FrameworkKey = keyof typeof FRAMEWORKS
+export type ResourceKey = keyof typeof RESOURCES
 export type PlatformKey = keyof typeof PLATFORMS
 
 export interface ProjectData {
   name: string
   description?: string
   preset: string
-  frameworks: FrameworkKey[]
+  resource: ResourceKey[]
   platform: PlatformKey
 }
