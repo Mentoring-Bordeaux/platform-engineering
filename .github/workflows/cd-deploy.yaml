@@ -68,9 +68,9 @@ jobs:
     needs: download_infra_outputs
     if: needs.download_infra_outputs.outputs.infra_loaded == 'true'
     env:
-      RG:               ${{ needs.download_infra_outputs.outputs.rg }}
-      ACR_NAME:         ${{ needs.download_infra_outputs.outputs.acr_name }}
-      ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.acr_login_server }}
+      RG:               ${{ needs.download_infra_outputs.outputs.RG }}
+      ACR_NAME:         ${{ needs.download_infra_outputs.outputs.ACR_NAME }}
+      ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}
 
     runs-on: ubuntu-latest
     steps:
@@ -94,7 +94,7 @@ jobs:
     environment: development
     needs: download_infra_outputs
     env:
-      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ needs.download_infra_outputs.outputs.azure_static_web_apps_api_token }}
+      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ needs.download_infra_outputs.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
     permissions:
       contents: read 
       pull-requests: write 
