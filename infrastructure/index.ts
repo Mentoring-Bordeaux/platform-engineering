@@ -78,7 +78,14 @@ const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
     },
 }, { dependsOn: [roleAssignment] });
  
+const staticWebAppSecrets = web.listStaticSiteSecretsOutput({
+    name: staticApp.name,
+    resourceGroupName: rg.name,
+});
 
+export const staticWebAppDeploymentToken = staticWebAppSecrets.apply(secrets =>
+    secrets.properties ? secrets.properties["apiKey"] : undefined
+);
 
 export const staticWebUrl = staticApp.defaultHostname;
 export const backendUrl = backend.latestRevisionFqdn.apply(fqdn => `https://${fqdn}`);
