@@ -124,6 +124,7 @@ jobs:
         with:
           name: nuxt-output
           path: app/.output/
+          include-hidden-files: true
 
   build-and-push:
     environment: development
