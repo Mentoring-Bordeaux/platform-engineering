@@ -102,6 +102,7 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        working-directory: ./app
 
       - name: Lint
         run: pnpm run lint --fix

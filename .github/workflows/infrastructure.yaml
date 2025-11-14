@@ -18,6 +18,10 @@ on:
       - '.github/workflows/**'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.ref }}-infrastructure
+  cancel-in-progress: true
+  
 permissions:
   id-token: write
   contents: read
