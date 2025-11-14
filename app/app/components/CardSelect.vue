@@ -2,7 +2,6 @@
   <div
     class="focus-visible:outline-primary transition-outline cursor-pointer rounded-lg duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-4"
     tabindex="0"
-    role="button"
     @keydown="onKeydown"
   >
     <u-page-card
@@ -17,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-const { icon, title, isSelected } = defineProps<{
+defineProps<{
   title: string
   icon?: string
   description?: string

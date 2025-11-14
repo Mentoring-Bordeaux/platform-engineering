@@ -7,7 +7,7 @@
   >
     <!-- Resource Configurations -->
     <FormSection
-      v-for="resource in projectData.resource"
+      v-for="resource in projectData.resources"
       :key="`resource-${resource.id}`"
       :title="`${RESOURCES[resource.key].name} Configuration`"
     >
@@ -103,7 +103,7 @@ const initializeState = (): ConfigurationFormType => {
   const platformConfig: ConfigurationFormType['platform'] = {}
 
   // Initialize resource configs with defaults
-  props.projectData.resource.forEach(resource => {
+  props.projectData.resources.forEach(resource => {
     resourcesConfig[resource.id] = {}
     const resourceConfig = RESOURCES[resource.key].config
     Object.entries(resourceConfig).forEach(([key, option]) => {
