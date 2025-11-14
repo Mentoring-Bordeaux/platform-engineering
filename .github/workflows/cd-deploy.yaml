@@ -23,9 +23,6 @@ permissions:
   contents: read
   actions: write
 
-env:
-  APP_LOCATION: "app" # location of your client code
-  APP_ARTIFACT_LOCATION: "app/.output/public" # location of client code build output
 jobs:
   download_infra_outputs:
     runs-on: ubuntu-latest
@@ -136,7 +133,7 @@ jobs:
           ls -la app/.output/ || echo "Directory not found"
           echo "Contents of app/.output/public:"
           ls -la app/.output/public/ || echo "Directory not found"
-          
+
       - name: Deploy to Azure Static Web App
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
