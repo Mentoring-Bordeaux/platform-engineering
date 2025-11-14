@@ -5,20 +5,20 @@
     class="w-full max-w-4xl"
     @submit="onSubmit"
   >
-    <!-- Framework Configurations -->
+    <!-- Resource Configurations -->
     <FormSection
-      v-for="frameworkKey in projectData.frameworks"
-      :key="`framework-${frameworkKey}`"
-      :title="`${FRAMEWORKS[frameworkKey].name} Configuration`"
+      v-for="resourceKey in projectData.resource"
+      :key="`resource-${resourceKey}`"
+      :title="`${RESOURCES[resourceKey].name} Configuration`"
     >
       <UFormField
-        v-for="(configOption, configKey) in FRAMEWORKS[frameworkKey].config"
-        :key="`${frameworkKey}-${String(configKey)}`"
-        :name="`frameworks.${frameworkKey}.${String(configKey)}`"
+        v-for="(configOption, configKey) in RESOURCES[resourceKey].config"
+        :key="`${resourceKey}-${String(configKey)}`"
+        :name="`resource.${resourceKey}.${String(configKey)}`"
         :label="configOption.label"
       >
         <GenericFormInput
-          v-model="state.frameworks[frameworkKey]![String(configKey)]"
+          v-model="state.resource[resourceKey]![String(configKey)]"
           :config-option="configOption"
           :placeholder="configOption.description"
           class="w-full"
@@ -73,9 +73,9 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import { reactive } from 'vue'
 import { z } from 'zod'
 import {
-  FRAMEWORKS,
+  RESOURCES,
   PLATFORMS,
-  type FrameworkKey,
+  type ResourceKey,
   type PlatformKey
 } from '~/config/project-options'
 
@@ -83,7 +83,7 @@ interface ProjectData {
   name: string
   description?: string
   preset: string
-  frameworks: FrameworkKey[]
+  resource: ResourceKey[]
   platform: PlatformKey
 }
 
@@ -95,9 +95,9 @@ const emit = defineEmits<{
   back: []
 }>()
 
-// Build dynamic schema based on selected frameworks and platform
+// Build dynamic schema based on selected resource and platform
 const ConfigurationSchema = z.object({
-  frameworks: z.record(
+  resource: z.record(
     z.string(),
     z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
   ),
@@ -108,18 +108,18 @@ type ConfigurationFormType = z.infer<typeof ConfigurationSchema>
 
 // Initialize state with default values from config
 const initializeState = (): ConfigurationFormType => {
-  const frameworksConfig: Record<
+  const resourcesConfig: Record<
     string,
     Record<string, string | number | boolean>
   > = {}
   const platformConfig: Record<string, string | number | boolean> = {}
 
-  // Initialize framework configs with defaults
-  props.projectData.frameworks.forEach(frameworkKey => {
-    frameworksConfig[frameworkKey] = {}
-    const frameworkConfig = FRAMEWORKS[frameworkKey].config
-    Object.entries(frameworkConfig).forEach(([key, option]) => {
-      frameworksConfig[frameworkKey]![key] = option.default
+  // Initialize resource configs with defaults
+  props.projectData.resource.forEach(resourceKey => {
+    resourcesConfig[resourceKey] = {}
+    const resourceConfig = RESOURCES[resourceKey].config
+    Object.entries(resourceConfig).forEach(([key, option]) => {
+      resourcesConfig[resourceKey]![key] = option.default
     })
   })
 
@@ -130,7 +130,7 @@ const initializeState = (): ConfigurationFormType => {
   })
 
   return {
-    frameworks: frameworksConfig,
+    resource: resourcesConfig,
     platform: platformConfig
   }
 }

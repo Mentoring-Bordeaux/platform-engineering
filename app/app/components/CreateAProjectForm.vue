@@ -65,27 +65,27 @@
       </UFormField>
     </FormSection>
 
-    <!-- Framework Selection Section -->
+    <!-- Resource Selection Section -->
     <FormSection
-      v-if="showFrameworkSection"
-      id="framework-section"
-      title="Framework Selection"
+      v-if="showResourceSection"
+      id="resource-section"
+      title="Resource Selection"
     >
       <UFormField
-        name="frameworks"
+        name="resource"
         required
       >
         <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Select one or more frameworks for your project
+          Select one or more resource for your project
         </p>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <CardSelect
-            v-for="(framework, key) in FRAMEWORKS"
+            v-for="(resource, key) in RESOURCES"
             :key="key"
-            :icon="framework.icon"
-            :title="framework.name"
-            :is-selected="state.frameworks.includes(key)"
-            @select="onFrameworkSelect(key)"
+            :icon="resource.icon"
+            :title="resource.name"
+            :is-selected="state.resource.includes(key)"
+            @select="onResourceSelect(key)"
           />
         </div>
       </UFormField>
@@ -141,11 +141,11 @@ import { ref, reactive } from 'vue'
 import { z } from 'zod'
 import {
   PRESETS,
-  FRAMEWORKS,
+  RESOURCES,
   PLATFORMS,
   type Preset,
   type ProjectData,
-  type FrameworkKey,
+  type ResourceKey,
   type PlatformKey
 } from '~/config/project-options'
 
@@ -155,28 +155,28 @@ const emit = defineEmits<{
 
 // Section display logic
 
-const showFrameworkSection = ref(false)
+const showResourceSection = ref(false)
 const showPlatformSection = ref(false)
 const showSubmitButton = ref(false)
 const showSuccessMessage = ref(false)
 
 const onPresetSelect = (key: string, preset?: Preset) => {
-  showFrameworkSection.value = true
+  showResourceSection.value = true
   state.preset = key
   if (key !== 'blank' && preset) {
-    state.frameworks = preset.frameworks
+    state.resource = preset.resource
     showPlatformSection.value = true
   } else {
-    state.frameworks = []
+    state.resource = []
   }
 }
 
-const onFrameworkSelect = (key: string) => {
+const onResourceSelect = (key: string) => {
   showPlatformSection.value = true
-  if (state.frameworks.includes(key)) {
-    state.frameworks = state.frameworks.filter(fw => fw !== key)
+  if (state.resource.includes(key)) {
+    state.resource = state.resource.filter(fw => fw !== key)
   } else {
-    state.frameworks = [...(state.frameworks || []), key]
+    state.resource = [...(state.resource || []), key]
   }
 }
 
@@ -191,14 +191,14 @@ const CreateAProjectFormSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
   preset: z.literal(Object.keys(PRESETS)).or(z.literal('blank')),
-  frameworks: z
+  resource: z
     .array(z.string())
-    .min(1, 'At least one framework must be selected')
+    .min(1, 'At least one resource must be selected')
     .refine(
-      frameworks =>
-        frameworks.every(fw => Object.keys(FRAMEWORKS).includes(fw)),
+      resource =>
+        resource.every(fw => Object.keys(RESOURCES).includes(fw)),
       {
-        message: `Frameworks must be one of: ${Object.keys(FRAMEWORKS).join(', ')}`
+        message: `Resource must be one of: ${Object.keys(RESOURCES).join(', ')}`
       }
     ),
   platform: z.literal(Object.keys(PLATFORMS))
@@ -210,7 +210,7 @@ const state = reactive<CreateAProjectFormType>({
   name: '',
   description: '',
   preset: '',
-  frameworks: [],
+  resource: [],
   platform: ''
 })
 
@@ -234,7 +234,7 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
 
   const projectData: ProjectData = {
     ...validation.data,
-    frameworks: validation.data.frameworks as FrameworkKey[],
+    resource: validation.data.resource as ResourceKey[],
     platform: validation.data.platform as PlatformKey
   }
 
