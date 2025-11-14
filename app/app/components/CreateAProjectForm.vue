@@ -119,8 +119,8 @@ import {
   PLATFORMS,
   type Preset,
   type ProjectData,
-  type ResourceKey,
-  type PlatformKey
+  type PlatformKey,
+  type ResourceOption
 } from '~/config/project-options'
 
 const emit = defineEmits<{
@@ -137,9 +137,13 @@ const onPresetSelect = (key: string, preset?: Preset) => {
   showPlatformSection.value = true
   state.preset = key
   if (key !== 'blank' && preset) {
-    state.resource = preset.resource
+    state.resources = preset.resources.map(resourceKey => ({
+      key: resourceKey,
+      id: `${resourceKey}-${Math.random().toString(36)}`
+    }))
+    console.log('Preset selected, resources updated:', state.resources)
   } else {
-    state.resource = []
+    state.resources = []
   }
 }
 
@@ -148,22 +152,22 @@ const onPlatformSelect = (key: string) => {
   state.platform = key
 }
 
+const resourceOption = z.object({
+  key: z.literal(Object.keys(RESOURCES), {
+    message: `Resource must be one of: ${Object.keys(RESOURCES).join(', ')}`
+  }),
+  id: z.string(),
+})
+
+
+
 // Schema for form data validation
 
 const CreateAProjectFormSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
   preset: z.literal(Object.keys(PRESETS)).or(z.literal('blank')),
-  resource: z
-    .array(z.string())
-    .min(1, 'At least one resource must be selected')
-    .refine(
-      resource =>
-        resource.every(fw => Object.keys(RESOURCES).includes(fw)),
-      {
-        message: `Resource must be one of: ${Object.keys(RESOURCES).join(', ')}`
-      }
-    ),
+  resources: z.array(resourceOption),
   platform: z.literal(Object.keys(PLATFORMS))
 })
 
@@ -173,7 +177,7 @@ const state = reactive<CreateAProjectFormType>({
   name: '',
   description: '',
   preset: '',
-  resource: [],
+  resources: [],
   platform: ''
 })
 
@@ -195,11 +199,11 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
 
   console.log('Form submitted with data:', validation.data)
 
-  const projectData: ProjectData = {
+  const projectData = {
     ...validation.data,
-    resource: validation.data.resource as ResourceKey[],
+    resource: validation.data.resources as ResourceOption[],
     platform: validation.data.platform as PlatformKey
-  }
+  } satisfies ProjectData
 
   emit('submit', projectData)
 }

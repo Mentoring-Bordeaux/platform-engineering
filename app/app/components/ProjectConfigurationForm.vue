@@ -7,18 +7,18 @@
   >
     <!-- Resource Configurations -->
     <FormSection
-      v-for="resourceKey in projectData.resource"
-      :key="`resource-${resourceKey}`"
-      :title="`${RESOURCES[resourceKey].name} Configuration`"
+      v-for="resource in projectData.resource"
+      :key="`resource-${resource.id}`"
+      :title="`${RESOURCES[resource.key].name} Configuration`"
     >
       <UFormField
-        v-for="(configOption, configKey) in RESOURCES[resourceKey].config"
-        :key="`${resourceKey}-${String(configKey)}`"
-        :name="`resource.${resourceKey}.${String(configKey)}`"
+        v-for="(configOption, configKey) in RESOURCES[resource.key].config"
+        :key="`${resource.id}-${String(configKey)}`"
+        :name="`resource.${resource.id}.${String(configKey)}`"
         :label="configOption.label"
       >
         <GenericFormInput
-          v-model="state.resource[resourceKey]![String(configKey)]"
+          v-model="state.resource[resource.id]![String(configKey)]"
           :config-option="configOption"
           :placeholder="configOption.description"
           class="w-full"
@@ -75,17 +75,8 @@ import { z } from 'zod'
 import {
   RESOURCES,
   PLATFORMS,
-  type ResourceKey,
-  type PlatformKey
+  type ProjectData
 } from '~/config/project-options'
-
-interface ProjectData {
-  name: string
-  description?: string
-  preset: string
-  resource: ResourceKey[]
-  platform: PlatformKey
-}
 
 const props = defineProps<{
   projectData: ProjectData
@@ -108,18 +99,15 @@ type ConfigurationFormType = z.infer<typeof ConfigurationSchema>
 
 // Initialize state with default values from config
 const initializeState = (): ConfigurationFormType => {
-  const resourcesConfig: Record<
-    string,
-    Record<string, string | number | boolean>
-  > = {}
-  const platformConfig: Record<string, string | number | boolean> = {}
+  const resourcesConfig: ConfigurationFormType['resource'] = {}
+  const platformConfig: ConfigurationFormType['platform'] = {}
 
   // Initialize resource configs with defaults
-  props.projectData.resource.forEach(resourceKey => {
-    resourcesConfig[resourceKey] = {}
-    const resourceConfig = RESOURCES[resourceKey].config
+  props.projectData.resource.forEach(resource => {
+    resourcesConfig[resource.id] = {}
+    const resourceConfig = RESOURCES[resource.key].config
     Object.entries(resourceConfig).forEach(([key, option]) => {
-      resourcesConfig[resourceKey]![key] = option.default
+      resourcesConfig[resource.id]![key] = option.default
     })
   })
 
