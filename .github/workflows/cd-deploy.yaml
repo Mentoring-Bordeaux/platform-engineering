@@ -118,7 +118,7 @@ jobs:
       - name: Download Nuxt build artifact
         uses: dawidd6/action-download-artifact@v6
         with:
-          # This must match your ci-build workflow file name
+          run_id: ${{ github.event.workflow_run.id }}
           workflow: ci-build.yaml
           workflow_conclusion: success
           name: nuxt-output           # matches `upload-artifact` name in ci-build
