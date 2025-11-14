@@ -25,14 +25,6 @@ env:
 jobs:
   download_infra_outputs:
     runs-on: ubuntu-latest
-    outputs:
-      infra_loaded: ${{ steps.load_infra.outputs.infra_loaded }}
-      ACR_LOGIN_SERVER: ${{ steps.load_infra.outputs.ACR_LOGIN_SERVER }}
-      ACR_NAME: ${{ steps.load_infra.outputs.ACR_NAME }}
-      ACR_REGISTRY_NAME: ${{ steps.load_infra.outputs.ACR_REGISTRY_NAME }}
-      RG: ${{ steps.load_infra.outputs.RG }}
-      STATIC_WEB_APP_URL: ${{ steps.load_infra.outputs.STATIC_WEB_APP_URL }}    
-      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ steps.load_infra.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
     steps:
       - name: Download infra outputs
         uses: dawidd6/action-download-artifact@v6
@@ -63,6 +55,15 @@ jobs:
           echo "AZURE_STATIC_WEB_APPS_API_TOKEN=$staticWebAppDeploymentToken" >> $GITHUB_ENV
           echo "infra_loaded=true" >> $GITHUB_OUTPUT
 
+          # Outputs (needed by other jobs)
+          echo "infra_loaded=true" >> $GITHUB_OUTPUT
+          echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_OUTPUT
+          echo "ACR_NAME=$containerAppName" >> $GITHUB_OUTPUT
+          echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_OUTPUT
+          echo "RG=$resourceGroupName" >> $GITHUB_OUTPUT
+          echo "STATIC_WEB_APP_URL=$staticWebUrl" >> $GITHUB_OUTPUT
+          echo "AZURE_STATIC_WEB_APPS_API_TOKEN=$staticWebAppDeploymentToken" >> $GITHUB_OUTPUT
+          
   deploy-api-aca:
     environment: development
     needs: download_infra_outputs
