@@ -1,6 +1,13 @@
 name: ci-build
 
 on:
+  push:
+    branches: [main, feature/pipelines]
+    paths:
+      - 'api/**'
+      - 'app/**'
+      - 'infrastructure/**'
+      - '.github/workflows/**'
   workflow_run:
     workflows: ["infrastructure"]
     types: [completed]
