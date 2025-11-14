@@ -6,8 +6,7 @@ on:
     paths:
       - 'api/**'
       - 'app/**'
-      - 'infrastructure/**'
-      - '.github/workflows/**'
+      - '.github/workflows/ci-build.yaml'
   workflow_run:
     workflows: ["infrastructure"]
     types: [completed]

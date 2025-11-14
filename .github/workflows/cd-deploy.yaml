@@ -6,13 +6,15 @@ on:
     paths:
       - 'api/**'
       - 'app/**'
-      - 'infrastructure/**'
-      - '.github/workflows/**'
+      - '.github/workflows/cd-deploy.yaml'
   workflow_run:
     workflows: ["ci-build"]
     types:
       - completed
-  workflow_dispatch: {}
+  workflow_dispatch:
+
+env:
+  APP_LOCATION: "app/.output/public"
 
 concurrency:
   group: ${{ github.ref }}-cd-deploy
@@ -124,15 +126,7 @@ jobs:
           name: nuxt-output
           path: app/.output
           branch: ${{ github.ref_name }}
-          if_no_artifact_found: fail  # fail fast if CI didn't produce it
-
-      - name: Debug - Check artifact contents
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Contents of app/.output:"
-          ls -la app/.output/ || echo "Directory not found"
-          echo "Contents of app/.output/public:"
-          ls -la app/.output/public/ || echo "Directory not found"
+          if_no_artifact_found: fail
 
       - name: Deploy to Azure Static Web App
         id: deploy
@@ -141,7 +135,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }} 
           repo_token: ${{ secrets.GITHUB_TOKEN }} 
           action: "upload"
-          app_location: "app/.output/public"
+          app_location: ${{ env.APP_LOCATION }}
           skip_app_build: true
           skip_api_build: true
 

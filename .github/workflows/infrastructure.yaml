@@ -4,18 +4,14 @@ on:
   pull_request:
     branches: [main, feature/pipelines]
     paths:
-      - 'api/**'
-      - 'app/**'
       - 'infrastructure/**'
-      - '.github/workflows/**'
+      - '.github/workflows/infrastructure.yaml'
 
   push:
     branches: [main, feature/pipelines]
     paths:
-      - 'api/**'
-      - 'app/**'
       - 'infrastructure/**'
-      - '.github/workflows/**'
+      - '.github/workflows/infrastructure.yaml'
   workflow_dispatch:
 
 concurrency:
