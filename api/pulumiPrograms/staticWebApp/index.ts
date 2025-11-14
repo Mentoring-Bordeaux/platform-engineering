@@ -1,8 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 
-const projectPrefix = "staticweb"; 
-
+const config = new pulumi.Config();
+const projectPrefix = config.require("Name");
 
 const resourceGroup = new azure.resources.ResourceGroup(`rg-${projectPrefix}-`, {
     location: "westeurope",

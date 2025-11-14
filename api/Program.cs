@@ -1,4 +1,5 @@
 using Pulumi.Automation;
+using System.Text.RegularExpressions;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,10 +38,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapPost("/create-staticweb", async () =>
+async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
 {
-    var stackName = "storage-staticweb-stack";
-    WorkspaceStack? stack = null;
+
+    var stackName = "storage-staticweb-stack" + Regex.Replace(request.Name.ToLower(), @"[^a-z0-9\-]", "-");
 
     var executingDir = Directory.GetCurrentDirectory();
     var workingDir = Path.Combine(executingDir, "pulumiPrograms", "staticWebApp");
@@ -48,7 +49,10 @@ app.MapPost("/create-staticweb", async () =>
     try
     {
         var stackArgs = new LocalProgramArgs(stackName, workingDir);
-        stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
+        var stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
+
+        
+        await stack.SetConfigAsync("Name", new ConfigValue(request.Name));
 
         var result = await stack.UpAsync(new UpOptions
         {
@@ -56,13 +60,27 @@ app.MapPost("/create-staticweb", async () =>
             OnStandardError = Console.Error.WriteLine
         });
 
-        var endpoint = result.Outputs["staticWebsiteUrl"].Value.ToString();
-        return Results.Ok(new { Url = endpoint });
+        var outputs = result.Outputs.ToDictionary(
+            kv => kv.Key, 
+            kv => kv.Value?.Value
+        );
+        return TypedResults.Json(outputs, statusCode: 200);
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Erreur lors du déploiement : {ex.Message}");
+        Console.Error.WriteLine(ex);
+        return TypedResults.Json(
+            new { message = "Erreur" },
+            statusCode: 500
+        );
     }
+}
+
+
+
+app.MapPost("/create-staticweb", async (StaticWebSiteRequest request) =>
+{
+    return await CreateStaticWebapp(request);
 });
 
 app.Run();
