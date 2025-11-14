@@ -123,7 +123,7 @@ jobs:
         with:
           run_id: ${{ github.event.workflow_run.id }}
           name: nuxt-output
-          path: ./.output
+          path: app/.output
           branch: ${{ github.ref_name }}
           if_no_artifact_found: fail  # fail fast if CI didn't produce it
 
@@ -137,7 +137,6 @@ jobs:
           app_location: "app/.output/public"
           skip_app_build: true
           skip_api_build: true
-          output_location: ''
 
   close_pull_request_job:
     environment: development
