@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["infrastructure"]
     types: [completed]
-    branches: [main, feature/pipelines]
   workflow_dispatch:
 
 concurrency:
@@ -149,7 +148,7 @@ jobs:
           echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_ENV  
           echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_ENV  
             
-      # --- Push images to ACR (no static ACR secrets needed) ---
+      # --- Push images to ACR ---
       - name: Azure Login
         uses: azure/login@v2
         with:

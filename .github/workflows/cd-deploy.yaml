@@ -9,8 +9,6 @@ on:
 env:
   APP_LOCATION: "app" # location of your client code
   APP_ARTIFACT_LOCATION: "app/.output/" # location of client code build output
-  AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }} # secret containing deployment token for your static web app
-
 jobs:
   download_infra_outputs:
     runs-on: ubuntu-latest
@@ -19,10 +17,9 @@ jobs:
       ACR_LOGIN_SERVER: ${{ steps.load_infra.outputs.ACR_LOGIN_SERVER }}
       ACR_NAME: ${{ steps.load_infra.outputs.ACR_NAME }}
       ACR_REGISTRY_NAME: ${{ steps.load_infra.outputs.ACR_REGISTRY_NAME }}
-      ACR_USERNAME: ${{ steps.load_infra.outputs.ACR_USERNAME }}
-      ACR_PASSWORD: ${{ steps.load_infra.outputs.ACR_PASSWORD }}
       RG: ${{ steps.load_infra.outputs.RG }}
-      STATIC_WEB_APP_URL: ${{ steps.load_infra.outputs.STATIC_WEB_APP_URL }}      
+      STATIC_WEB_APP_URL: ${{ steps.load_infra.outputs.STATIC_WEB_APP_URL }}    
+      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ steps.load_infra.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
     steps:
       - name: Download infra outputs
         uses: dawidd6/action-download-artifact@v6
@@ -50,7 +47,7 @@ jobs:
           echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
           echo "RG=$resourceGroupName" >> $GITHUB_ENV
           echo "STATIC_WEB_APP_URL=$staticWebUrl" >> $GITHUB_ENV
-          echo "BACKEND_URL=$backendUrl" >> $GITHUB_ENV
+          echo "AZURE_STATIC_WEB_APPS_API_TOKEN=$staticWebAppDeploymentToken" >> $GITHUB_ENV
 
   deploy-api-aca:
     environment: development
@@ -60,8 +57,6 @@ jobs:
       RG:               ${{ needs.download_infra_outputs.outputs.rg }}
       ACR_NAME:         ${{ needs.download_infra_outputs.outputs.acr_name }}
       ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.acr_login_server }}
-      ACR_USERNAME:     ${{ needs.download_infra_outputs.outputs.acr_username }}
-      ACR_PASSWORD:     ${{ needs.download_infra_outputs.outputs.acr_password }}
 
     runs-on: ubuntu-latest
     steps:
@@ -83,9 +78,12 @@ jobs:
 
   deploy-frontend-webapp:
     environment: development
+    needs: download_infra_outputs
+    env:
+      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ needs.download_infra_outputs.outputs.azure_static_web_apps_api_token }}
     permissions:
-      contents: read # for actions/checkout to fetch code
-      pull-requests: write # for Azure/static-web-apps-deploy to comment on PRs
+      contents: read 
+      pull-requests: write 
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
@@ -97,12 +95,15 @@ jobs:
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }} # secret containing api token for app
-          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
+          azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }} 
+          repo_token: ${{ secrets.GITHUB_TOKEN }} 
           action: "upload"
           app_location: ${{ env.APP_LOCATION }}
           app_artifact_location: ${{ env.APP_ARTIFACT_LOCATION }}
+
   close_pull_request_job:
+    environment: development
+    needs: deploy-frontend-webapp
     permissions:
       contents: none
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
