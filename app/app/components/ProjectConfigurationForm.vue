@@ -1,7 +1,9 @@
 <template>
   <UForm
     :state="state"
+    :schema="validationSchema"
     class="w-full max-w-4xl"
+    @error="e => console.log(e)"
     @submit="onSubmit"
   >
     <!-- Resource Configurations -->
@@ -13,7 +15,7 @@
       <UFormField
         v-for="(configOption, configKey) in resource.config"
         :key="`resource-${resource.name}-${index}-${configKey}`"
-        :name="`resources.${resource.name}-${index}.${configKey}`"
+        :name="`resources.${index}.config.${configKey}`"
         :label="configOption.label"
       >
         <GenericFormInput
@@ -30,7 +32,7 @@
       <UFormField
         v-for="(configOption, configKey) in platform.config"
         :key="`platform-${platform.name}-${configOption.label}-${configKey}`"
-        :name="`platform-${platform.name}-${configOption.label}-${configKey}`"
+        :name="`platform.config.${configKey}`"
         :label="configOption.label"
       >
         <GenericFormInput
@@ -79,6 +81,17 @@ const emit = defineEmits<{
 const resources = computed(() => props.projectData.resources)
 const platform = computed(() => props.projectData.platform)
 
+// Generate validation schema from project data
+const validationSchema = computed(() => {
+  const schema = generateProjectConfigurationSchema(props.projectData)
+  console.log('=== VALIDATION SCHEMA ===')
+  console.log('Full schema:', schema)
+  console.log('Schema shape:', schema.shape)
+  console.log('Resources schema:', schema.shape.resources)
+  console.log('Platform schema:', schema.shape.platform)
+  return schema
+})
+
 interface ConfigurationFormState {
   resources: ConfiguredResource[]
   platform: ConfiguredPlatform
@@ -87,17 +100,11 @@ interface ConfigurationFormState {
 const state = ref<ConfigurationFormState>({
   resources: resources.value.map(resource => ({
     name: resource.name,
-    config: Object.keys(resource.config).reduce((acc, key) => {
-      const val = resource.config[key]?.default ?? null
-      return { ...acc, [key]: val }
-    }, {})
+    config: generateDefaultConfig(resource.config)
   })),
   platform: {
     name: platform.value.name,
-    config: Object.keys(platform.value.config).reduce((acc, key) => {
-      const val = platform.value.config[key]?.default ?? null
-      return { ...acc, [key]: val }
-    }, {})
+    config: generateDefaultConfig(platform.value.config)
   }
 })
 

@@ -10,11 +10,13 @@ export const RESOURCES = {
     config: {
       name: {
         type: 'text',
+        required: true,
         label: 'Project Name',
         description: 'The name of the Static Web App project.'
       },
       framework: {
         type: 'enum',
+        required: true,
         label: 'Framework',
         description: 'The framework used for the Static Web App.',
         values: [
