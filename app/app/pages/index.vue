@@ -13,11 +13,11 @@
 </template>
 
 <script setup lang="ts">
-import type { ProjectData } from '~/config/project-options'
+import type { ProjectOptions } from '~/config/project-options'
 
-const projectData = ref<ProjectData | null>(null)
+const projectData = ref<ProjectOptions | null>(null)
 
-const setProjectData = (data: ProjectData) => {
+const setProjectData = (data: ProjectOptions) => {
   projectData.value = data
 }
 </script>

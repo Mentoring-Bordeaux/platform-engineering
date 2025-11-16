@@ -47,12 +47,12 @@
       >
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <CardSelect
-            v-for="(preset, key) in PRESETS"
+            v-for="(preset, key) in PRESETS_WITHOUT_BLANK"
             :key="key"
             :title="preset.name"
             :description="preset.description"
             :is-selected="state.preset === key"
-            @select="onPresetSelect(key, preset)"
+            @select="onPresetSelect(key)"
           />
         </div>
         <USeparator label="or" />
@@ -113,38 +113,25 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { ref, reactive } from 'vue'
 import { z } from 'zod'
-import {
-  PRESETS,
-  RESOURCES,
-  PLATFORMS,
-  type Preset,
-  type ProjectData,
-  type PlatformKey,
-  type ResourceOption,
-  type PresetKey
-} from '~/config/project-options'
+import { PLATFORMS, type PlatformKey } from '~/config/platforms'
+import { PRESETS, type PresetKey } from '~/config/presets'
+import type { ProjectOptions } from '~/config/project-options'
+import { RESOURCES } from '~/config/resources'
 
 const emit = defineEmits<{
-  submit: [data: ProjectData]
+  submit: [data: ProjectOptions]
 }>()
+
+const { blank: _, ...PRESETS_WITHOUT_BLANK } = PRESETS
 
 // Section display logic
 
 const showPlatformSection = ref(false)
 const showSubmitButton = ref(false)
 
-const onPresetSelect = (key: string, preset?: Preset) => {
+const onPresetSelect = (key: string) => {
   showPlatformSection.value = true
   state.preset = key
-  if (key !== 'blank' && preset) {
-    state.resources = preset.resources.map(resourceKey => ({
-      key: resourceKey,
-      id: `${resourceKey}-${crypto.randomUUID()}`
-    }))
-    console.log('Preset selected, resources updated:', state.resources)
-  } else {
-    state.resources = []
-  }
 }
 
 const onPlatformSelect = (key: string) => {
@@ -152,22 +139,12 @@ const onPlatformSelect = (key: string) => {
   state.platform = key
 }
 
-const resourceOption = z.object({
-  key: z.literal(Object.keys(RESOURCES), {
-    message: `Resource must be one of: ${Object.keys(RESOURCES).join(', ')}`
-  }),
-  id: z.string(),
-})
-
-
-
 // Schema for form data validation
 
 const CreateAProjectFormSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
   preset: z.literal(Object.keys(PRESETS)).or(z.literal('blank')),
-  resources: z.array(resourceOption),
   platform: z.literal(Object.keys(PLATFORMS))
 })
 
@@ -177,15 +154,12 @@ const state = reactive<CreateAProjectFormType>({
   name: '',
   description: '',
   preset: '',
-  resources: [],
   platform: ''
 })
 
 // Submit action
 
 async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
-  console.log('Submitting form...')
-
   const validation = CreateAProjectFormSchema.safeParse(event.data)
 
   if (!validation.success) {
@@ -198,12 +172,17 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
 
   console.log('Form submitted with data:', validation.data)
 
+  const presetKey = validation.data.preset as PresetKey
+  const platformKey = validation.data.platform as PlatformKey
+
+  const preset = PRESETS[presetKey]
+
   const projectData = {
     ...validation.data,
-    preset: validation.data.preset as PresetKey,
-    resources: validation.data.resources as ResourceOption[],
-    platform: validation.data.platform as PlatformKey
-  } satisfies ProjectData
+    preset: preset,
+    resources: preset.resources.map(resourceName => RESOURCES[resourceName]),
+    platform: PLATFORMS[platformKey]
+  } satisfies ProjectOptions
 
   emit('submit', projectData)
 }

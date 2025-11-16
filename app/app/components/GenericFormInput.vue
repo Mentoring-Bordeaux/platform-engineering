@@ -6,20 +6,28 @@
       configOption.type === 'password'
     "
     :type="configOption.type"
+    :required="configOption.required || false"
   />
-  <UTextarea v-else-if="configOption.type === 'textarea'" />
-  <USwitch v-else-if="configOption.type === 'boolean'" />
+  <UTextarea
+    v-else-if="configOption.type === 'textarea'"
+    :required="configOption.required || false"
+  />
+  <USwitch
+    v-else-if="configOption.type === 'boolean'"
+    :required="configOption.required || false"
+  />
   <USelect
     v-else-if="configOption.type === 'enum'"
+    :required="configOption.required || false"
     :items="configOption.values"
   />
   <p v-else>Unsupported input type: {{ configOption.type }}</p>
 </template>
 
 <script setup lang="ts">
-import type { ConfigOption } from '~/types'
+import type { Field } from '~/types'
 
 defineProps<{
-  configOption: ConfigOption
+  configOption: Field
 }>()
 </script>

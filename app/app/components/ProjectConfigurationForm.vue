@@ -1,24 +1,23 @@
 <template>
   <UForm
-    :schema="ConfigurationSchema"
     :state="state"
     class="w-full max-w-4xl"
     @submit="onSubmit"
   >
     <!-- Resource Configurations -->
     <FormSection
-      v-for="resource in projectData.resources"
-      :key="`resource-${resource.id}`"
-      :title="`${RESOURCES[resource.key].name} Configuration`"
+      v-for="(resource, index) in resources"
+      :key="`resource-${resource.name}-${index}`"
+      :title="`${resource.name} Configuration`"
     >
       <UFormField
-        v-for="(configOption, configKey) in RESOURCES[resource.key].config"
-        :key="`${resource.id}-${String(configKey)}`"
-        :name="`resource.${resource.id}.${String(configKey)}`"
+        v-for="(configOption, configKey) in resource.config"
+        :key="`resource-${resource.name}-${index}-${configKey}`"
+        :name="`resources.${resource.name}-${index}.${configKey}`"
         :label="configOption.label"
       >
         <GenericFormInput
-          v-model="state.resource[resource.id]![String(configKey)]"
+          v-model="state.resources[index]!.config[configKey]"
           :config-option="configOption"
           :placeholder="configOption.description"
           class="w-full"
@@ -27,18 +26,15 @@
     </FormSection>
 
     <!-- Platform Configuration -->
-    <FormSection
-      :title="`${PLATFORMS[projectData.platform].name} Configuration`"
-    >
+    <FormSection :title="`${platform.name} Configuration`">
       <UFormField
-        v-for="(configOption, configKey) in PLATFORMS[projectData.platform]
-          .config"
-        :key="`platform-${configKey}`"
-        :name="`platform.${configKey}`"
+        v-for="(configOption, configKey) in platform.config"
+        :key="`platform-${platform.name}-${configOption.label}-${configKey}`"
+        :name="`platform-${platform.name}-${configOption.label}-${configKey}`"
         :label="configOption.label"
       >
         <GenericFormInput
-          v-model="state.platform[configKey]"
+          v-model="state.platform.config[configKey]"
           :config-option="configOption"
           :placeholder="configOption.description"
           class="w-full"
@@ -69,71 +65,49 @@
 </template>
 
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
-import { reactive } from 'vue'
-import { z } from 'zod'
-import {
-  RESOURCES,
-  PLATFORMS,
-  type ProjectData
-} from '~/config/project-options'
+import type { ProjectOptions } from '~/config/project-options'
+import type { ConfiguredPlatform, ConfiguredResource } from '~/types'
 
 const props = defineProps<{
-  projectData: ProjectData
+  projectData: ProjectOptions
 }>()
 
 const emit = defineEmits<{
   back: []
 }>()
 
-// Build dynamic schema based on selected resource and platform
-const ConfigurationSchema = z.object({
-  resource: z.record(
-    z.string(),
-    z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-  ),
-  platform: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-})
+const resources = computed(() => props.projectData.resources)
+const platform = computed(() => props.projectData.platform)
 
-type ConfigurationFormType = z.infer<typeof ConfigurationSchema>
-
-// Initialize state with default values from config
-const initializeState = (): ConfigurationFormType => {
-  const resourcesConfig: ConfigurationFormType['resource'] = {}
-  const platformConfig: ConfigurationFormType['platform'] = {}
-
-  // Initialize resource configs with defaults
-  props.projectData.resources.forEach(resource => {
-    resourcesConfig[resource.id] = {}
-    const resourceConfig = RESOURCES[resource.key].config
-    Object.entries(resourceConfig).forEach(([key, option]) => {
-      resourcesConfig[resource.id]![key] = option.default
-    })
-  })
-
-  // Initialize platform config with defaults
-  const platformConfigOptions = PLATFORMS[props.projectData.platform].config
-  Object.entries(platformConfigOptions).forEach(([key, option]) => {
-    platformConfig[key] = option.default
-  })
-
-  return {
-    resource: resourcesConfig,
-    platform: platformConfig
-  }
+interface ConfigurationFormState {
+  resources: ConfiguredResource[]
+  platform: ConfiguredPlatform
 }
 
-const state = reactive<ConfigurationFormType>(initializeState())
+const state = ref<ConfigurationFormState>({
+  resources: resources.value.map(resource => ({
+    name: resource.name,
+    config: Object.keys(resource.config).reduce((acc, key) => {
+      const val = resource.config[key]?.default ?? null
+      return { ...acc, [key]: val }
+    }, {})
+  })),
+  platform: {
+    name: platform.value.name,
+    config: Object.keys(platform.value.config).reduce((acc, key) => {
+      const val = platform.value.config[key]?.default ?? null
+      return { ...acc, [key]: val }
+    }, {})
+  }
+})
 
 // Submit action
-async function onSubmit(event: FormSubmitEvent<ConfigurationFormType>) {
+async function onSubmit() {
   console.log('Configuration submitted:', {
     projectData: props.projectData,
-    configuration: event.data
+    configuration: state.value
   })
 
-  // Here you would typically send this data to your API
-  // For now, we'll just log it and show a success message
   alert('Project configuration saved successfully!')
 }
 
