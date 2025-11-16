@@ -165,8 +165,6 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
   if (!validation.success) {
     console.error('Form validation failed:', validation.error)
 
-    // Scroll to top to show errors
-    window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
 
