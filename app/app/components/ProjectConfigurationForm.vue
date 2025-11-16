@@ -1,6 +1,6 @@
 <template>
   <UForm
-    :state="state"
+    :state="state as any"
     :schema="validationSchema"
     class="w-full max-w-4xl"
     @error="e => console.log(e)"
@@ -82,15 +82,9 @@ const resources = computed(() => props.projectData.resources)
 const platform = computed(() => props.projectData.platform)
 
 // Generate validation schema from project data
-const validationSchema = computed(() => {
-  const schema = generateProjectConfigurationSchema(props.projectData)
-  console.log('=== VALIDATION SCHEMA ===')
-  console.log('Full schema:', schema)
-  console.log('Schema shape:', schema.shape)
-  console.log('Resources schema:', schema.shape.resources)
-  console.log('Platform schema:', schema.shape.platform)
-  return schema
-})
+const validationSchema = computed(() =>
+  generateProjectConfigurationSchema(props.projectData)
+)
 
 interface ConfigurationFormState {
   resources: ConfiguredResource[]

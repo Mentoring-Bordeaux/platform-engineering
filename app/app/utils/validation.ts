@@ -117,30 +117,14 @@ export function generatePlatformConfigSchema(platform: Platform) {
 export function generateProjectConfigurationSchema(
   projectData: ProjectOptions
 ) {
+  const resourceSchemas = projectData.resources.map(resource =>
+    generateResourceConfigSchema(resource)
+  )
+
   return z.object({
-    resources: z.array(z.any()).superRefine((resources, ctx) => {
-      resources.forEach((res, index) => {
-        const expectedSchema = generateResourceConfigSchema(
-          projectData.resources[index] as Resource
-        )
-        const parseResult = expectedSchema.safeParse(res)
-        if (!parseResult.success) {
-          console.log('Validating resource:', parseResult)
-          parseResult.error.issues.forEach(issue => {
-            console.log('Parse result:', issue)
-            ctx.addIssue({
-              ...issue,
-              path: ['resources', index, ...issue.path]
-            })
-          })
-        }
-      })
-      console.log(ctx.issues)
-    }),
-    platform: generatePlatformConfigSchema(projectData.platform).superRefine(
-      platformData => {
-        console.log('Validating platform:', platformData)
-      }
-    )
+    resources: z.tuple(
+      resourceSchemas as unknown as [z.ZodTypeAny, ...z.ZodTypeAny[]]
+    ),
+    platform: generatePlatformConfigSchema(projectData.platform)
   })
 }
