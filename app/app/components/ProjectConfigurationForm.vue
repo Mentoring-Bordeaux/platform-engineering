@@ -3,7 +3,7 @@
     :state="state as any"
     :schema="validationSchema"
     class="w-full max-w-4xl"
-    @error="e => console.log(e)"
+    @error="handleFormValidationErrors"
     @submit="onSubmit"
   >
     <!-- Resource Configurations -->
@@ -17,6 +17,7 @@
         :key="`resource-${resource.name}-${index}-${configKey}`"
         :name="`resources.${index}.config.${configKey}`"
         :label="configOption.label"
+        :required="configOption.required || false"
       >
         <GenericFormInput
           v-model="state.resources[index]!.config[configKey]"
@@ -101,6 +102,10 @@ const state = ref<ConfigurationFormState>({
     config: generateDefaultConfig(platform.value.config)
   }
 })
+
+function handleFormValidationErrors(error: unknown) {
+  console.error('Form validation errors:', error)
+}
 
 // Submit action
 async function onSubmit() {

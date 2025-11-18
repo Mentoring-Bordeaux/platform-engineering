@@ -3,6 +3,7 @@
     :schema="CreateAProjectFormSchema"
     :state="state"
     class="w-full max-w-4xl"
+    @error="handleFormValidationErrors"
     @submit="onSubmit"
   >
     <!-- Base Information Section -->
@@ -20,6 +21,7 @@
           placeholder="My awesome project"
           class="w-full"
           size="md"
+          required
         />
       </UFormField>
       <UFormField
@@ -43,9 +45,10 @@
     >
       <UFormField
         name="preset"
+        label="Select a project preset"
         required
       >
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <CardSelect
             v-for="(preset, key) in PRESETS_WITHOUT_BLANK"
             :key="key"
@@ -73,12 +76,10 @@
     >
       <UFormField
         name="platform"
+        label="Choose where to host your project repository"
         required
       >
-        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Choose where to host your project repository
-        </p>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <CardSelect
             v-for="(platform, key) in PLATFORMS"
             :key="key"
@@ -156,6 +157,10 @@ const state = reactive<CreateAProjectFormType>({
   preset: '',
   platform: ''
 })
+
+function handleFormValidationErrors(error: unknown) {
+  console.error('Form validation errors:', error)
+}
 
 // Submit action
 
