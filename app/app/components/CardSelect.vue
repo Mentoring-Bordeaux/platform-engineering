@@ -31,8 +31,9 @@ const onSelect = () => {
   emit('select')
 }
 
+
+// Permit selection via keyboard with Tab + Enter/Space
 function onKeydown(event: KeyboardEvent) {
-  // Enter or Space: prevent default and select
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
     onSelect()
