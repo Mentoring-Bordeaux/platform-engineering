@@ -119,13 +119,9 @@ import { PRESETS, type PresetKey } from '~/config/presets'
 import type { ProjectOptions } from '~/config/project-options'
 import { RESOURCES } from '~/config/resources'
 
-const props = defineProps<{
-  projectData: ProjectOptions | null
-}>()
+const projectStore = useProjectStore()
 
-const emit = defineEmits<{
-  submit: [data: ProjectOptions]
-}>()
+const router = useRouter()
 
 const { blank: _, ...PRESETS_WITHOUT_BLANK } = PRESETS
 
@@ -156,8 +152,8 @@ const CreateAProjectFormSchema = z.object({
 type CreateAProjectFormType = z.infer<typeof CreateAProjectFormSchema>
 
 const state = reactive<CreateAProjectFormType>({
-  name: '',
-  description: '',
+  name: projectStore.projectData?.name || '',
+  description: projectStore.projectData?.description || '',
   preset: '',
   platform: ''
 })
@@ -165,17 +161,6 @@ const state = reactive<CreateAProjectFormType>({
 function handleFormValidationErrors(error: unknown) {
   console.error('Form validation errors:', error)
 }
-
-// If projectData prop is provided, prefill the form state
-
-onMounted(() => {
-  if (props.projectData) {
-    state.name = props.projectData.name
-    state.description = props.projectData.description || ''
-    showPlatformSection.value = true
-    showSubmitButton.value = !!state.platform
-  }
-})
 
 // Submit action
 
@@ -201,6 +186,7 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
     platform: PLATFORMS[platformKey]
   } satisfies ProjectOptions
 
-  emit('submit', projectData)
+  projectStore.setProjectData(projectData)
+  router.push('/configure')
 }
 </script>

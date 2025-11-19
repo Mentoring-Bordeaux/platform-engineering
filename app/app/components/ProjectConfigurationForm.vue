@@ -59,6 +59,7 @@
         icon="i-lucide-check"
         size="md"
         variant="solid"
+        class="cursor-pointer"
         type="submit"
       >
         Create Project
