@@ -72,6 +72,8 @@
 import type { ProjectOptions } from '~/config/project-options'
 import type { ConfiguredPlatform, ConfiguredResource } from '~/types'
 
+const config = useRuntimeConfig()
+
 const props = defineProps<{
   projectData: ProjectOptions
 }>()
@@ -115,7 +117,15 @@ async function onSubmit() {
     configuration: state.value
   })
 
-  alert('Project configuration saved successfully!')
+  const apiUrl = config.public.apiBase + '/weatherforecast'
+
+  try {
+    const response = await $fetch(apiUrl)
+    console.log('API response:', response)
+  } catch (error) {
+    console.error('Error fetching weather data:', error)
+    alert('Failed to fetch weather data. Check console for details.')
+  }
 }
 
 function handleBackPress() {
