@@ -119,6 +119,10 @@ import { PRESETS, type PresetKey } from '~/config/presets'
 import type { ProjectOptions } from '~/config/project-options'
 import { RESOURCES } from '~/config/resources'
 
+const props = defineProps<{
+  projectData: ProjectOptions | null
+}>()
+
 const emit = defineEmits<{
   submit: [data: ProjectOptions]
 }>()
@@ -130,12 +134,12 @@ const { blank: _, ...PRESETS_WITHOUT_BLANK } = PRESETS
 const showPlatformSection = ref(false)
 const showSubmitButton = ref(false)
 
-const onPresetSelect = (key: string) => {
+const onPresetSelect = (key: PresetKey) => {
   showPlatformSection.value = true
   state.preset = key
 }
 
-const onPlatformSelect = (key: string) => {
+const onPlatformSelect = (key: PlatformKey) => {
   showSubmitButton.value = true
   state.platform = key
 }
@@ -162,6 +166,17 @@ function handleFormValidationErrors(error: unknown) {
   console.error('Form validation errors:', error)
 }
 
+// If projectData prop is provided, prefill the form state
+
+onMounted(() => {
+  if (props.projectData) {
+    state.name = props.projectData.name
+    state.description = props.projectData.description || ''
+    showPlatformSection.value = true
+    showSubmitButton.value = !!state.platform
+  }
+})
+
 // Submit action
 
 async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
@@ -182,7 +197,6 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
 
   const projectData = {
     ...validation.data,
-    preset: preset,
     resources: preset.resources.map(resourceName => RESOURCES[resourceName]),
     platform: PLATFORMS[platformKey]
   } satisfies ProjectOptions

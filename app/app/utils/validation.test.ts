@@ -5,7 +5,6 @@ import {
   generatePlatformConfigSchema,
   generateProjectConfigurationSchema
 } from './validation'
-import { PRESETS } from '~/config/presets'
 import type { ProjectOptions } from '~/config/project-options'
 
 describe('Validation Schema', () => {
@@ -199,7 +198,6 @@ describe('Validation Schema', () => {
 
       const projectData: ProjectOptions = {
         name: 'Test Project',
-        preset: PRESETS.blank,
         resources: [mockResource1, mockResource2],
         platform: mockPlatform
       }
@@ -263,7 +261,6 @@ describe('Validation Schema', () => {
 
       const projectData: ProjectOptions = {
         name: 'Test Project',
-        preset: PRESETS.blank,
         resources: [mockResource],
         platform: mockPlatform
       }
@@ -350,7 +347,6 @@ describe('Validation Schema', () => {
 
       const projectData: ProjectOptions = {
         name: 'Test Project',
-        preset: PRESETS.blank,
         resources: [mockResource],
         platform: mockPlatform
       }
@@ -440,7 +436,6 @@ describe('Validation Schema', () => {
 
       const projectData: ProjectOptions = {
         name: 'Test Project',
-        preset: PRESETS.blank,
         resources: [mockResource1, mockResource2],
         platform: mockPlatform
       }
@@ -536,7 +531,6 @@ describe('Validation Schema', () => {
 
       const projectData: ProjectOptions = {
         name: 'Test Project',
-        preset: PRESETS.blank,
         resources: [mockResource1, mockResource2],
         platform: mockPlatform
       }

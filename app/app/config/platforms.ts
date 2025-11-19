@@ -27,26 +27,6 @@ export const PLATFORMS = {
         description: 'Whether the repository should be public or private.',
         values: ['public', 'private'],
         default: 'private'
-      },
-      owner: {
-        type: 'text',
-        required: true,
-        label: 'Repository Owner',
-        description:
-          'The owner (user or organization) of the GitHub repository.'
-      },
-      template_owner: {
-        type: 'text',
-        required: true,
-        label: 'Template Owner',
-        description:
-          'The owner (user or organization) of the template repository.'
-      },
-      template_repo: {
-        type: 'text',
-        required: true,
-        label: 'Template Repository',
-        description: 'The name of the template repository.'
       }
     }
   },
