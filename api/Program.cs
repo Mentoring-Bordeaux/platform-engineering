@@ -17,7 +17,6 @@ var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
 
 
-
 // Configure CORS to allow requests from Nuxt 4 development server
 builder.Services.AddCors(options =>
 {
