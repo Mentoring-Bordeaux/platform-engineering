@@ -121,6 +121,13 @@ export function generateProjectConfigurationSchema(
     generateResourceConfigSchema(resource)
   )
 
+  if (resourceSchemas.length === 0) {
+    return z.object({
+      resources: z.tuple([]),
+      platform: generatePlatformConfigSchema(projectData.platform)
+    })
+  }
+
   return z.object({
     resources: z.tuple(
       resourceSchemas as unknown as [z.ZodTypeAny, ...z.ZodTypeAny[]]
