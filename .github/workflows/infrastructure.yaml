@@ -1,14 +1,8 @@
 name: infrastructure
 
 on:
-  pull_request:
-    branches: [main, feature/pipelines]
-    paths:
-      - 'infrastructure/**'
-      - '.github/workflows/infrastructure.yaml'
-
   push:
-    branches: [main, feature/pipelines]
+    branches: [main]
     paths:
       - 'infrastructure/**'
       - '.github/workflows/infrastructure.yaml'
@@ -24,57 +18,7 @@ permissions:
   actions: write
 
 jobs:
-  preview:
-    environment: development
-    # Only run preview when the PR is from the same repository
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: infrastructure
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: infrastructure/package.json
-
-      - name: Enable pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-          run_install: false
-
-      - name: Install dependencies
-        if: hashFiles('infrastructure/pnpm-lock.yaml') != ''
-        run: pnpm install --frozen-lockfile
-
-      - name: Build TypeScript (if script present)
-        run: pnpm run --if-present build
-
-      - name: Pulumi Auth
-        uses: pulumi/auth-actions@v1
-        with:
-          organization: teachingiac
-          requested-token-type: urn:pulumi:token-type:access_token:team
-          scope: team:Enseirb_students
-
-      - name: Pulumi Preview
-        uses: pulumi/actions@v6
-        with:
-          command: preview
-          stack-name: teachingiac/platform-engineering-infra/dev
-          work-dir: infrastructure
-
-  update:
+  create-infrastructure:
     environment: development
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -138,23 +82,3 @@ jobs:
           name: infra-outputs
           path: infrastructure/infra.outputs.env
           retention-days: 3
-
-  trigger-ci-build:
-    needs: [update]
-    environment: development
-    if: success()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Trigger ci-build workflow
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -s -X POST \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/ci-build.yaml/dispatches \
-            -d '{"ref":"feature/pipelines"}'
-
-
