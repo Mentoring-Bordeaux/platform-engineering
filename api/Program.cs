@@ -51,44 +51,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
-{
-
-    var stackName = "storage-staticweb-stack" + Regex.Replace(request.Name.ToLower(), @"[^a-z0-9\-]", "-");
-
-    var executingDir = Directory.GetCurrentDirectory();
-    var workingDir = Path.Combine(executingDir, "pulumiPrograms", "staticWebApp");
-
-    try
-    {
-        var stackArgs = new LocalProgramArgs(stackName, workingDir);
-        var stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
-
-        
-        await stack.SetConfigAsync("Name", new ConfigValue(request.Name));
-
-        var result = await stack.UpAsync(new UpOptions
-        {
-            OnStandardOutput = Console.WriteLine,
-            OnStandardError = Console.Error.WriteLine
-        });
-
-        var outputs = result.Outputs.ToDictionary(
-            kv => kv.Key, 
-            kv => kv.Value?.Value
-        );
-        return TypedResults.Json(outputs, statusCode: 200);
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine(ex);
-        return TypedResults.Json(
-            new { message = "Erreur" },
-            statusCode: 500
-        );
-    }
-}
-
 ////////////////////////////////////////////// Pulumi Automation API Logic  ////////////////////////////////////////////////
 
 // Retrieve GitHub token from environment variables
