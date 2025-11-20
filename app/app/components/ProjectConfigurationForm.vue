@@ -1,4 +1,23 @@
 <template>
+  <UModal
+    v-model:open="isLoading"
+    :ui="{ closeButton: false }"
+  >
+    <template #content>
+      <div class="flex flex-col items-center justify-center gap-4 p-6">
+        <span
+          aria-live="assertive"
+          class="sr-only"
+          >Loading, creating your project repository</span
+        >
+        <USkeleton class="bg-primary h-5 w-5 rounded-full" />
+        <div class="flex flex-col items-center justify-center text-center">
+          <p>Creating your project repository</p>
+          <p>This may take a few moments...</p>
+        </div>
+      </div>
+    </template>
+  </UModal>
   <UForm
     :state="state as any"
     :schema="validationSchema"
@@ -14,7 +33,7 @@
     >
       <UFormField
         v-for="(configOption, configKey) in resource.config"
-        :key="`resource-${resource.name}-${index}-${configKey}`"
+        :key="`resources.${index}.config.${configKey}`"
         :name="`resources.${index}.config.${configKey}`"
         :label="configOption.label"
         :required="configOption.required || false"
@@ -36,6 +55,11 @@
         :name="`platform.config.${configKey}`"
         :label="configOption.label"
         :required="configOption.required || false"
+        :class="
+          configOption.type === 'boolean'
+            ? 'flex items-center justify-between py-2'
+            : ''
+        "
       >
         <GenericFormInput
           v-model="state.platform.config[configKey]"
@@ -73,6 +97,8 @@
 import type { ProjectOptions } from '~/config/project-options'
 import type { ConfiguredPlatform, ConfiguredResource } from '~/types'
 
+import InfoModal from './InfoModal.vue'
+
 const config = useRuntimeConfig()
 
 const props = defineProps<{
@@ -107,6 +133,27 @@ const state = ref<ConfigurationFormState>({
   }
 })
 
+const isLoading = ref(false)
+
+const overlay = useOverlay()
+
+interface ModalOptions {
+  title: string
+  body: string
+}
+
+async function openModal({ title, body }: ModalOptions) {
+  const modal = overlay.create(InfoModal, {
+    props: {
+      title,
+      body
+    }
+  })
+  modal.open()
+}
+
+// Handlers
+
 function handleFormValidationErrors(error: unknown) {
   console.error('Form validation errors:', error)
 }
@@ -118,16 +165,35 @@ async function onSubmit() {
     configuration: state.value
   })
 
-  const apiUrl = config.public.apiBase + '/create-repo'
-  try {
-    const response = await $fetch(apiUrl, {
-      method: 'POST',
-      body: state.value.platform.config
+  isLoading.value = true
+  const { data, error } = await useFetch('/create-repo', {
+    server: false,
+    baseURL: config.public.apiBase,
+    method: 'POST',
+    body: state.value.platform.config,
+    watch: false
+  })
+  isLoading.value = false
+
+  if (error.value) {
+    console.error('Error creating repository:', error.value.data)
+    openModal({
+      title: error.value.data?.title || 'Repository Creation Error',
+      body:
+        error.value.data?.detail ||
+        'There was an error creating the project repository. Please try again.'
     })
-    console.log('API response:', response)
-  } catch (error) {
-    console.error('Error submitting configuration:', error)
-    alert('Failed to create repository. Please try again.')
+    return
+  }
+  if (data.value) {
+    if (data.value) {
+      console.log('Repository created successfully:', data.value)
+      openModal({
+        title: 'Your Project is Ready!',
+        body: 'Your project repository has been created successfully!'
+      })
+      return
+    }
   }
 }
 
