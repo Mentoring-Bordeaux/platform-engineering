@@ -43,7 +43,7 @@ export function generateFieldSchema(field: Field): z.ZodTypeAny {
       }
 
       if (!field.required) {
-        return schema.optional().nullable()
+        return schema.nullish()
       }
       return schema
     }
@@ -58,7 +58,7 @@ export function generateFieldSchema(field: Field): z.ZodTypeAny {
       })
 
       if (!field.required) {
-        return schema.optional().nullable()
+        return schema.nullish()
       }
       return schema
     }
@@ -69,7 +69,7 @@ export function generateFieldSchema(field: Field): z.ZodTypeAny {
       })
 
       if (!field.required) {
-        return schema.optional().nullable()
+        return schema.nullish()
       }
       return schema
     }

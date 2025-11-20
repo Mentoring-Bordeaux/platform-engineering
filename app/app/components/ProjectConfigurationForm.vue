@@ -35,6 +35,7 @@
         :key="`platform-${platform.name}-${configOption.label}-${configKey}`"
         :name="`platform.config.${configKey}`"
         :label="configOption.label"
+        :required="configOption.required || false"
       >
         <GenericFormInput
           v-model="state.platform.config[configKey]"
