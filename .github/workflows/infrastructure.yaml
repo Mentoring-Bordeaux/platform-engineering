@@ -139,7 +139,7 @@ jobs:
           path: infrastructure/infra.outputs.env
           retention-days: 3
 
-  ci-build:
+  trigger-ci-build:
     needs: [update]
     environment: development
     if: success()

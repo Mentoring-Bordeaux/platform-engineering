@@ -1,12 +1,6 @@
 name: cd-deploy
 
 on:
-  push:
-    branches: [main, feature/pipelines]
-    paths:
-      - 'api/**'
-      - 'app/**'
-      - '.github/workflows/cd-deploy.yaml'
   workflow_run:
     workflows: ["ci-build"]
     types:
@@ -60,13 +54,6 @@ jobs:
             exit 1
           fi
 
-          echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_ENV
-          echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
-          echo "RG=$resourceGroupName" >> $GITHUB_ENV
-          echo "STATIC_WEB_APP_URL=$staticWebUrl" >> $GITHUB_ENV
-          echo "AZURE_STATIC_WEB_APPS_API_TOKEN=$staticWebAppDeploymentToken" >> $GITHUB_ENV
-          # Outputs (needed by other jobs)
-          
           echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_OUTPUT
           echo "ACR_NAME=$containerAppName" >> $GITHUB_OUTPUT
           echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_OUTPUT
@@ -111,7 +98,6 @@ jobs:
     permissions:
       contents: read 
       pull-requests: write 
-    if: github.event_name == 'push' || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -138,21 +124,3 @@ jobs:
           app_location: ${{ env.APP_LOCATION }}
           skip_app_build: true
           skip_api_build: true
-
-  close_pull_request_job:
-    environment: development
-    needs: deploy-frontend-webapp
-    permissions:
-      contents: none
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    name: Close Pull Request Job
-    steps:
-      - name: Close Pull Request
-        id: closepullrequest
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: "close"
-          app_location: ${{ env.APP_LOCATION }}
-

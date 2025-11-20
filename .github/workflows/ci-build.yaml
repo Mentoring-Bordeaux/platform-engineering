@@ -7,6 +7,7 @@ on:
       - 'api/**'
       - 'app/**'
       - '.github/workflows/ci-build.yaml'
+      - '.github/workflows/cd-deploy.yaml'
   workflow_run:
     workflows: ["infrastructure"]
     types: [completed]
@@ -86,14 +87,10 @@ jobs:
           version: 9
           run_install: false
 
-      
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          # cache: 'pnpm'
-          # cache-dependency-path: app/pnpm-lock.yaml
 
       - name: Enable pnpm
         run: corepack enable
@@ -110,13 +107,6 @@ jobs:
       - name: Build Nuxt
         run: pnpm run build
         working-directory: ./app
-
-      - name: Debug Nuxt output
-        run: |
-          pwd
-          ls -R
-          echo "------ app/.output ------"
-          ls -R app/.output || echo "app/.output NOT FOUND"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -190,10 +180,11 @@ jobs:
             ${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest
           cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache
           cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache,mode=max
-  cd-deploy:
+
+  trigger-cd-deploy:
     needs: [build-and-push, frontend]
     environment: development
-    if: success()
+    if: success() && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4  
