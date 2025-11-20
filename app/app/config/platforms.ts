@@ -8,26 +8,32 @@ export const PLATFORMS = {
     name: 'GitHub',
     icon: 'devicon:github',
     config: {
-      name: {
+      RepoName: {
         type: 'text',
         required: true,
         label: 'Repository Name',
         description: 'The name of the GitHub repository to create.'
       },
-      description: {
+      Description: {
         type: 'textarea',
         label: 'Repository Description',
         description: 'A brief description of the GitHub repository.',
         default: ''
       },
-      visibility: {
-        type: 'enum',
-        required: true,
-        label: 'Repository Visibility',
-        description: 'Whether the repository should be public or private.',
-        values: ['public', 'private'],
-        default: 'private'
+      Private: {
+        type: 'boolean',
+        label: 'Private Repository',
+        description: 'Whether the repository should be private or public.',
+        default: true
       }
+      // visibility: {
+      //   type: 'enum',
+      //   required: true,
+      //   label: 'Repository Visibility',
+      //   description: 'Whether the repository should be public or private.',
+      //   values: ['public', 'private'],
+      //   default: 'private'
+      // }
     }
   },
   gitlab: {

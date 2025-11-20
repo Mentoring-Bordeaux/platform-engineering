@@ -118,14 +118,16 @@ async function onSubmit() {
     configuration: state.value
   })
 
-  const apiUrl = config.public.apiBase + '/weatherforecast'
-
+  const apiUrl = config.public.apiBase + '/create-repo'
   try {
-    const response = await $fetch(apiUrl)
+    const response = await $fetch(apiUrl, {
+      method: 'POST',
+      body: state.value.platform.config
+    })
     console.log('API response:', response)
   } catch (error) {
-    console.error('Error fetching weather data:', error)
-    alert('Failed to fetch weather data. Check console for details.')
+    console.error('Error submitting configuration:', error)
+    alert('Failed to create repository. Please try again.')
   }
 }
 

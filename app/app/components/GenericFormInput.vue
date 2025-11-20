@@ -12,10 +12,13 @@
     v-else-if="configOption.type === 'textarea'"
     :required="configOption.required || false"
   />
-  <USwitch
+  <div
     v-else-if="configOption.type === 'boolean'"
-    :required="configOption.required || false"
-  />
+    class="flex w-full items-center justify-between pb-2"
+  >
+    <label class="mr-4">{{ configOption.description }}</label>
+    <USwitch :required="configOption.required || false" />
+  </div>
   <USelect
     v-else-if="configOption.type === 'enum'"
     :required="configOption.required || false"
