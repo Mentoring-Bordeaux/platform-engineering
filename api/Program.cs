@@ -17,7 +17,6 @@ var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
 
 
-
 // Configure CORS to allow requests from Nuxt 4 development server
 builder.Services.AddCors(options =>
 {
@@ -51,7 +50,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-
 ////////////////////////////////////////////// Pulumi Automation API Logic  ////////////////////////////////////////////////
 
 // Retrieve GitHub token from environment variables
@@ -69,6 +67,7 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
     {
         var stackArgs = new LocalProgramArgs(stackName, workingDir);
         stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
+
 
 
         if (string.IsNullOrEmpty(githubToken))
@@ -165,6 +164,45 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
 }
 
 
+async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
+{
+
+    var stackName = "storage-staticweb-stack" + Regex.Replace(request.Name.ToLower(), @"[^a-z0-9\-]", "-");
+
+    var executingDir = Directory.GetCurrentDirectory();
+    var workingDir = Path.Combine(executingDir, "pulumiPrograms", "staticWebApp");
+
+    try
+    {
+        var stackArgs = new LocalProgramArgs(stackName, workingDir);
+        var stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
+
+        
+        await stack.SetConfigAsync("Name", new ConfigValue(request.Name));
+
+        var result = await stack.UpAsync(new UpOptions
+        {
+            OnStandardOutput = Console.WriteLine,
+            OnStandardError = Console.Error.WriteLine
+        });
+
+        var outputs = result.Outputs.ToDictionary(
+            kv => kv.Key, 
+            kv => kv.Value?.Value
+        );
+        return TypedResults.Json(outputs, statusCode: 200);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine(ex);
+        return TypedResults.Json(
+            new { message = "Erreur" },
+            statusCode: 500
+        );
+    }
+}
+
+
 //////////////////////////////////////////////////// Define API Endpoints ////////////////////////////////////////////////
 
 
@@ -185,10 +223,9 @@ app.MapPost("/create-repo", async (CreateRepoRequest request) =>
 
 });
 
+app.MapPost("/create-staticweb", async (StaticWebSiteRequest request) =>
+{
+    return await CreateStaticWebapp(request);
+});
+
 app.Run();
-
-
-
-
-
-
