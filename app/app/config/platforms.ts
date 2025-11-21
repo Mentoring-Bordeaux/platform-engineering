@@ -26,14 +26,6 @@ export const PLATFORMS = {
         description: 'Whether the repository should be private or public.',
         default: true
       }
-      // visibility: {
-      //   type: 'enum',
-      //   required: true,
-      //   label: 'Repository Visibility',
-      //   description: 'Whether the repository should be public or private.',
-      //   values: ['public', 'private'],
-      //   default: 'private'
-      // }
     }
   },
   gitlab: {

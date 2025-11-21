@@ -1,8 +1,5 @@
 <template>
-  <UModal
-    v-model:open="isLoading"
-    :ui="{ closeButton: false }"
-  >
+  <UModal v-model:open="isLoading">
     <template #content>
       <div class="flex flex-col items-center justify-center gap-4 p-6">
         <span
