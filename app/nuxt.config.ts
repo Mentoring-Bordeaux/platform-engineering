@@ -1,9 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: [
-    '@nuxt/eslint',
-    '@nuxt/ui'
-  ],
+  modules: ['@nuxt/eslint', '@nuxt/ui', '@pinia/nuxt'],
 
   devtools: {
     enabled: true
@@ -28,7 +25,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       // URL of the API server in .NET
-      apiBase: process.env.NUXT_API_URL 
+      apiBase: process.env.NUXT_API_URL
     }
   }
 })
