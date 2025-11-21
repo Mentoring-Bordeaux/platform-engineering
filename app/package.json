@@ -8,20 +8,30 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.68",
     "@iconify-json/simple-icons": "^1.2.54",
     "@nuxt/ui": "^4.0.1",
+    "@pinia/nuxt": "^0.11.3",
     "axios": "^1.12.2",
-    "nuxt": "^4.1.2"
+    "nuxt": "^4.1.2",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.9.0",
     "@types/node": "^24.8.1",
+    "@vitest/coverage-v8": "^4.0.9",
     "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.7.1",
     "typescript": "^5.9.3",
+    "vitest": "^4.0.9",
     "vue-tsc": "^3.1.0"
   },
   "resolutions": {
