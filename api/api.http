@@ -10,4 +10,13 @@ Accept: application/json
     "Description": "The description in the README of the repo", //Optionnal
 }
 
+POST {{api_HostAddress}}/create-staticweb
+Content-Type: application/json
+Accept: application/json
+
+{
+    "Name":"nomenminiscule" // NO SPECIAL CHAR OR MAJ
+}
+
+
 ###
