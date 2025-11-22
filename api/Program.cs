@@ -1,5 +1,6 @@
 using Pulumi.Automation;
 using System.Text.RegularExpressions;
+using Scalar.AspNetCore;
 
 //////////////////////////////////////////////// Configure the API  ////////////////////////////////////////////////
 
@@ -39,6 +40,7 @@ app.UseCors("NuxtPolicy");
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
