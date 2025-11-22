@@ -1,20 +1,11 @@
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
-using System.Reflection;
-
-using Microsoft.AspNetCore.Mvc;
 using Pulumi.Automation;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Configuration;
-using DotNetEnv;
 
 //////////////////////////////////////////////// Configure the API  ////////////////////////////////////////////////
 
 // Create a builder for the web application
 
 var builder = WebApplication.CreateBuilder(args);
-
-DotNetEnv.Env.Load();
 
 
 // Configure CORS to allow requests from Nuxt 4 development server
@@ -23,9 +14,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("NuxtPolicy",
         policy =>
         {
-            // Retrieve the Nuxt app URL from environment variables and allow it
-            var nuxtAppUrl = System.Environment.GetEnvironmentVariable("NUXT_APP_URL") ?? "http://localhost:3001"; // Can't be null  (TODO: throw error if null?)
-            Console.WriteLine($"Configuring CORS to allow requests from: {nuxtAppUrl}");
+            var nuxtAppUrl = builder.Configuration["NuxtAppUrl"] ?? "http://localhost:3001";
             policy.WithOrigins(nuxtAppUrl)
                   .AllowAnyHeader()
                   .AllowAnyMethod();
@@ -38,6 +27,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// Log the configured CORS policy
+var nuxtAppUrl = builder.Configuration["NuxtAppUrl"] ?? "http://localhost:3001";
+app.Logger.LogInformation("Configuring CORS to allow requests from: {NuxtAppUrl}", nuxtAppUrl);
 
 // Use the configured CORS policy
 app.UseCors("NuxtPolicy");
@@ -52,11 +45,8 @@ app.UseHttpsRedirection();
 
 ////////////////////////////////////////////// Pulumi Automation API Logic  ////////////////////////////////////////////////
 
-// Retrieve GitHub token from environment variables
-var githubToken = System.Environment.GetEnvironmentVariable("GITHUB_TOKEN");
-
 // Method to create a GitHub repository using Pulumi Automation API
-async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfiguration config)
+async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfiguration config, ILogger logger)
 {
     var stackName = "github-repo-stack" + request.RepoName.Replace(" ", "-").ToLowerInvariant();
     var stack = null as WorkspaceStack;
@@ -68,22 +58,23 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
         var stackArgs = new LocalProgramArgs(stackName, workingDir);
         stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
 
-
-
+        // Retrieve GitHub token from configuration (user secrets or environment variables)
+        var githubToken = config["GitHubToken"];
         if (string.IsNullOrEmpty(githubToken))
         {
-            return Results.Problem("GitHub token is not provided in the environment variables.", statusCode: 401);
+            return Results.Problem("GitHub token is not provided in the configuration.", statusCode: 401);
         }
         await stack.SetConfigAsync("githubToken", new ConfigValue(githubToken));
         await stack.SetConfigAsync("repoName", new ConfigValue(request.RepoName));
-        if (request.Description != null && request.Description != "")
+        if (!string.IsNullOrEmpty(request.Description))
         {
             await stack.SetConfigAsync("description", new ConfigValue(request.Description));
         }
         await stack.SetConfigAsync("isPrivate", new ConfigValue(request.Private.ToString().ToLowerInvariant()));
 
-        var orgName = Environment.GetEnvironmentVariable("ORGANIZATION_NAME"); ;
-        if (orgName != null && orgName != "")
+        // Retrieve organization name from configuration (user secrets or environment variables)
+        var orgName = config["OrganizationName"];
+        if (!string.IsNullOrEmpty(orgName))
         {
             await stack.SetConfigAsync("orgName", new ConfigValue(orgName));
         }
@@ -91,8 +82,8 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
         // Run the Pulumi program
         var result = await stack.UpAsync(new UpOptions
         {
-            OnStandardOutput = (output) => Console.WriteLine(output),
-            OnStandardError = (error) => Console.WriteLine($"ERROR: {error}")
+            OnStandardOutput = (output) => logger.LogInformation("Pulumi: {Output}", output),
+            OnStandardError = (error) => logger.LogError("Pulumi ERROR: {Error}", error)
         });
 
         // Retrieve outputs
@@ -123,7 +114,7 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
             // Try to parse the string status code into an integer
             if (int.TryParse(statusCodeStr, out var statusCodeInt))
             {
-                Console.WriteLine($"GitHub API error occurred: {errorMessage} (Status code: {statusCodeInt})");
+                logger.LogError("GitHub API error occurred: {ErrorMessage} (Status code: {StatusCode})", errorMessage, statusCodeInt);
 
                 // Return Results.Problem with the explicit status code
                 // This will set the actual HTTP response status to 422 for Repository creation or 403 for Token permission issues
@@ -138,7 +129,7 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
             return Results.Problem($"An internal error occurred while processing the GitHub API response: {ex.Message}");
         }
 
-        Console.WriteLine("Outputting general exception details.");
+        logger.LogError(ex, "General exception occurred during repository creation");
         // General Pulumi or unparsed exception
         return Results.Problem($"An error occurred: {ex.Message}");
     }
@@ -164,7 +155,7 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
 }
 
 
-async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
+async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request, ILogger logger)
 {
 
     var stackName = "storage-staticweb-stack" + Regex.Replace(request.Name.ToLower(), @"[^a-z0-9\-]", "-");
@@ -182,19 +173,19 @@ async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
 
         var result = await stack.UpAsync(new UpOptions
         {
-            OnStandardOutput = Console.WriteLine,
-            OnStandardError = Console.Error.WriteLine
+            OnStandardOutput = (output) => logger.LogInformation("Pulumi: {Output}", output),
+            OnStandardError = (error) => logger.LogError("Pulumi ERROR: {Error}", error)
         });
 
         var outputs = result.Outputs.ToDictionary(
             kv => kv.Key, 
-            kv => kv.Value?.Value
+            kv => kv.Value.Value
         );
         return TypedResults.Json(outputs, statusCode: 200);
     }
     catch (Exception ex)
     {
-        Console.Error.WriteLine(ex);
+        logger.LogError(ex, "Error occurred while creating static web app");
         return TypedResults.Json(
             new { message = "Erreur" },
             statusCode: 500
@@ -207,25 +198,30 @@ async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
 
 
 // Define the request model for creating a repository
-app.MapPost("/create-repo", async (CreateRepoRequest request) =>
+app.MapPost("/create-repo", async (CreateRepoRequest request, ILogger<Program> logger) =>
 {
     if (string.IsNullOrEmpty(request.RepoName))
     {
+        logger.LogWarning("Repository creation attempted with empty RepoName");
         return Results.BadRequest("The 'RepoName' field is required.");
     }
+
+    logger.LogInformation("Creating GitHub repository: {RepoName}", request.RepoName);
 
     // Call the method to create the repository
     var result = await CreateGitHubRepository(
         request,
-        app.Configuration
+        app.Configuration,
+        logger
     );
     return result;
 
 });
 
-app.MapPost("/create-staticweb", async (StaticWebSiteRequest request) =>
+app.MapPost("/create-staticweb", async (StaticWebSiteRequest request, ILogger<Program> logger) =>
 {
-    return await CreateStaticWebapp(request);
+    logger.LogInformation("Creating static web app: {Name}", request.Name);
+    return await CreateStaticWebapp(request, logger);
 });
 
 app.Run();

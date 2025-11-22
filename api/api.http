@@ -1,13 +1,13 @@
-@api_HostAddress = http://localhost:5064
+@api_HostAddress = https://localhost:7258
 
 POST {{api_HostAddress}}/create-repo
 Content-Type: application/json
 Accept: application/json
 
 {
-    "RepoName": "new-pulumi-repo",
+    "RepoName": "new-pulumi-repo-{{$randomInt}}",
     "Private": true,
-    "Description": "The description in the README of the repo", //Optionnal
+    "Description": "The description in the README of the repo"
 }
 
 ###
