@@ -1,5 +1,6 @@
 using Pulumi.Automation;
 using System.Text.RegularExpressions;
+using Scalar.AspNetCore;
 
 //////////////////////////////////////////////// Configure the API  ////////////////////////////////////////////////
 
@@ -39,6 +40,7 @@ app.UseCors("NuxtPolicy");
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
@@ -179,7 +181,7 @@ async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request, ILogger log
 
         var outputs = result.Outputs.ToDictionary(
             kv => kv.Key, 
-            kv => kv.Value.Value
+            kv => kv.Value?.Value ?? string.Empty
         );
         return TypedResults.Json(outputs, statusCode: 200);
     }
@@ -187,7 +189,7 @@ async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request, ILogger log
     {
         logger.LogError(ex, "Error occurred while creating static web app");
         return TypedResults.Json(
-            new { message = "Erreur" },
+            new { message = "An error occurred while creating the static web app" },
             statusCode: 500
         );
     }
