@@ -24,7 +24,7 @@ jobs:
       ACR_REGISTRY_NAME: ${{ steps.load_infra.outputs.ACR_REGISTRY_NAME }}
       RG: ${{ steps.load_infra.outputs.RG }}
       STATIC_WEB_APP_URL: ${{ steps.load_infra.outputs.STATIC_WEB_APP_URL }}
-      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ steps.load_infra.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+      # AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ steps.load_infra.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
       infra_loaded: ${{ steps.load_infra.outputs.infra_loaded }}
     steps:
       - name: Download infra outputs
@@ -55,7 +55,7 @@ jobs:
           echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_OUTPUT
           echo "RG=$resourceGroupName" >> $GITHUB_OUTPUT
           echo "STATIC_WEB_APP_URL=$staticWebUrl" >> $GITHUB_OUTPUT
-          echo "AZURE_STATIC_WEB_APPS_API_TOKEN=$staticWebAppDeploymentToken" >> $GITHUB_OUTPUT
+          # echo "AZURE_STATIC_WEB_APPS_API_TOKEN=$staticWebAppDeploymentToken" >> $GITHUB_OUTPUT
           echo "infra_loaded=true" >> $GITHUB_OUTPUT
 
 
@@ -89,8 +89,8 @@ jobs:
   deploy-frontend-webapp:
     environment: development
     needs: download_infra_outputs
-    env:
-      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ needs.download_infra_outputs.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+    # env:
+    #   AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ needs.download_infra_outputs.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
     permissions:
       contents: read 
       pull-requests: write 
@@ -107,12 +107,18 @@ jobs:
           path: app/.output
           branch: ${{ github.ref_name }}
           if_no_artifact_found: fail
-
+      - name: Get Static Web App Deployment Token
+        id: get-token
+        run: |
+          # Use Pulumi CLI to get the token and mask it in logs
+          TOKEN=$(cd infrastructure && pulumi stack output staticWebAppDeploymentToken --show-secrets)
+          echo "::add-mask::$TOKEN"
+          echo "deployment_token=$TOKEN" >> $GITHUB_OUTPUT
       - name: Deploy to Azure Static Web App
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }} 
+          azure_static_web_apps_api_token: ${{ steps.get-token.outputs.deployment_token }}
           repo_token: ${{ secrets.GITHUB_TOKEN }} 
           action: "upload"
           app_location: ${{ env.APP_LOCATION }}
