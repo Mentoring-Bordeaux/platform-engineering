@@ -107,6 +107,14 @@ jobs:
           path: app/.output
           branch: ${{ github.ref_name }}
           if_no_artifact_found: fail
+      
+      - name: Pulumi Auth
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: teachingiac
+          requested-token-type: urn:pulumi:token-type:access_token:team
+          scope: team:Enseirb_students
+      
       - name: Get Static Web App Deployment Token
         id: get-token
         run: |
