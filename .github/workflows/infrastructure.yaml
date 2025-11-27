@@ -2,10 +2,7 @@ name: infrastructure
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'infrastructure/**'
-      - '.github/workflows/infrastructure.yaml'
+    branches: [main, feature/pipelines]
   workflow_dispatch:
 
 concurrency:
@@ -20,7 +17,6 @@ permissions:
 jobs:
   create-infrastructure:
     environment: development
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,7 +34,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: infrastructure/package.json
+          node-version: 18.x
 
       - name: Enable pnpm
         uses: pnpm/action-setup@v4
@@ -72,8 +68,8 @@ jobs:
 
       - name: Export Pulumi outputs
         run: |
-          pulumi stack output --json > outputs.json
-          cat outputs.json | jq -r 'to_entries|.[]|"\(.key)=\(.value)"' > infra.outputs.env
+          pulumi stack output --stack teachingiac/platform-engineering-infra/dev --json > outputs.json
+          jq -r 'to_entries|.[]|"\(.key)=\(.value)"' outputs.json > infra.outputs.env
           cat infra.outputs.env
 
       - name: Upload infra outputs artifact
@@ -82,3 +78,20 @@ jobs:
           name: infra-outputs
           path: infrastructure/infra.outputs.env
           retention-days: 3
+  trigger-ci-build:
+    needs: [create-infrastructure]
+    environment: development
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger ci-build workflow
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/ci-build.yaml/dispatches \
+            -d '{"ref":"feature/pipelines"}'

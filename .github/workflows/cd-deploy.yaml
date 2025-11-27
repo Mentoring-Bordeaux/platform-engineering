@@ -1,10 +1,6 @@
 name: cd-deploy
 
 on:
-  workflow_run:
-    workflows: ["ci-build"]
-    types:
-      - completed
   workflow_dispatch:
 
 env:
@@ -88,7 +84,7 @@ jobs:
           az containerapp update \
             --name ${{ env.ACR_NAME }} \
             --resource-group ${{ env.RG }} \
-            --image "${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest" \
+            --image "${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest"
 
   deploy-frontend-webapp:
     environment: development
@@ -101,12 +97,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
       - name: Download Nuxt build artifact
         uses: dawidd6/action-download-artifact@v6
         with:
-          run_id: ${{ github.event.workflow_run.id }}
+          # run_id: ${{ github.event.workflow_run.id }}
           workflow: ci-build.yaml
           workflow_conclusion: success
           name: nuxt-output

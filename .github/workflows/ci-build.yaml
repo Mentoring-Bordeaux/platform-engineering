@@ -2,15 +2,14 @@ name: ci-build
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/pipelines]
     paths:
       - 'api/**'
       - 'app/**'
       - '.github/workflows/ci-build.yaml'
       - '.github/workflows/cd-deploy.yaml'
-  workflow_run:
-    workflows: ["infrastructure"]
-    types: [completed]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -24,30 +23,7 @@ permissions:
 env:
   IMAGE_TAG: ${{ github.sha }}
 jobs:
-  gate:
-    runs-on: ubuntu-latest
-    outputs:
-      proceed: ${{ steps.decide.outputs.proceed }}
-      branch: ${{ steps.decide.outputs.branch }}
-    steps:
-      - id: decide
-        shell: bash
-        run: |
-          # If we were triggered by infra, only proceed if infra succeeded.
-          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
-            echo "proceed=false" >> $GITHUB_OUTPUT
-          else
-            echo "proceed=true" >> $GITHUB_OUTPUT
-          fi
-          # Determine branch name (used to fetch the right infra artifact)
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
-          else
-            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
   backend: 
-    needs: gate
-    if: needs.gate.outputs.proceed == 'true'
     name: Backend Build
     runs-on: ubuntu-latest
     defaults:
@@ -73,8 +49,6 @@ jobs:
         run: dotnet test --no-build --verbosity normal
 
   frontend:
-    needs: gate
-    if: needs.gate.outputs.proceed == 'true'
     name: Frontend Build
     runs-on: ubuntu-latest
 
@@ -101,7 +75,7 @@ jobs:
         working-directory: ./app
 
       - name: Lint
-        run: pnpm run lint --fix
+        run: pnpm run lint:fix
         working-directory: ./app
 
       - name: Build Nuxt
@@ -117,8 +91,8 @@ jobs:
 
   build-and-push:
     environment: development
-    needs: [gate, backend]
-    if: needs.gate.outputs.proceed == 'true'
+    needs: [backend]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -134,7 +108,6 @@ jobs:
           workflow_conclusion: success
           name: infra-outputs
           path: infrastructure
-          branch: ${{ needs.gate.outputs.branch }}
 
       - name: Load infra outputs
         id: load_infra
@@ -180,3 +153,20 @@ jobs:
             ${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest
           cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache
           cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache,mode=max
+  trigger-cd-deploy:
+    needs: [build-and-push, frontend]
+    environment: development
+    if: success() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4  
+      - name: Trigger cd-deploy workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ref="${GITHUB_REF_NAME}"
+          curl -s -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/cd-deploy.yaml/dispatches \
+            -d "{\"ref\":\"${ref}\"}"
