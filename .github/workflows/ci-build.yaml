@@ -75,7 +75,7 @@ jobs:
         working-directory: ./app
 
       - name: Lint
-        run: pnpm run lint:fix
+        run: pnpm run lint --fix
         working-directory: ./app
 
       - name: Build Nuxt
