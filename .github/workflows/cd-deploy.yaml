@@ -2,7 +2,10 @@ name: cd-deploy
 
 on:
   workflow_dispatch:
-
+  workflow_run:
+    workflows: ["ci-build"]
+    types:
+      - completed
 env:
   APP_LOCATION: "app/.output/public"
 
@@ -17,6 +20,8 @@ permissions:
 
 jobs:
   download_infra_outputs:
+    # CHANGE: Check 'workflow_run.event' to filter out PR builds
+    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       ACR_LOGIN_SERVER: ${{ steps.load_infra.outputs.ACR_LOGIN_SERVER }}
@@ -62,11 +67,11 @@ jobs:
   deploy-api-aca:
     environment: development
     needs: download_infra_outputs
-    if: needs.download_infra_outputs.outputs.infra_loaded == 'true'
+    if: needs.download_infra.outputs.infra_loaded == 'true'
     env:
-      RG:               ${{ needs.download_infra_outputs.outputs.RG }}
-      ACR_NAME:         ${{ needs.download_infra_outputs.outputs.ACR_NAME }}
-      ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}
+      RG:               ${{ needs.download_infra.outputs.RG }}
+      ACR_NAME:         ${{ needs.download_infra.outputs.ACR_NAME }}
+      ACR_LOGIN_SERVER: ${{ needs.download_infra.outputs.ACR_LOGIN_SERVER }}
 
     runs-on: ubuntu-latest
     steps:
@@ -90,8 +95,8 @@ jobs:
     environment: development
     needs: download_infra_outputs
     env:
-      RG: ${{ needs.download_infra_outputs.outputs.RG }}
-      STATIC_WEB_APP_NAME: ${{ needs.download_infra_outputs.outputs.STATIC_WEB_APP_NAME }}
+      RG: ${{ needs.download_infra.outputs.RG }}
+      STATIC_WEB_APP_NAME: ${{ needs.download_infra.outputs.STATIC_WEB_APP_NAME }}
     permissions:
       contents: read 
       pull-requests: write 

@@ -153,20 +153,3 @@ jobs:
             ${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest
           cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache
           cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache,mode=max
-  trigger-cd-deploy:
-    needs: [build-and-push, frontend]
-    environment: development
-    if: success() && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4  
-      - name: Trigger cd-deploy workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ref="${GITHUB_REF_NAME}"
-          curl -s -X POST \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/cd-deploy.yaml/dispatches \
-            -d "{\"ref\":\"${ref}\"}"
