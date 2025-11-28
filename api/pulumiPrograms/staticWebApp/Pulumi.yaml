@@ -1,0 +1,10 @@
+name: staticWebApp
+description: Test a basic template for creationg a static web app
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: azure-typescript

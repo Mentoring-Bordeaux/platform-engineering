@@ -1,6 +1,13 @@
 @api_HostAddress = http://localhost:5064
 
-GET {{api_HostAddress}}/weatherforecast/
+POST {{api_HostAddress}}/create-repo
+Content-Type: application/json
 Accept: application/json
+
+{
+    "RepoName": "new-pulumi-repo",
+    "Private": true,
+    "Description": "The description in the README of the repo", //Optionnal
+}
 
 ###
