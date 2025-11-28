@@ -24,7 +24,7 @@ jobs:
       ACR_REGISTRY_NAME: ${{ steps.load_infra.outputs.ACR_REGISTRY_NAME }}
       RG: ${{ steps.load_infra.outputs.RG }}
       STATIC_WEB_APP_URL: ${{ steps.load_infra.outputs.STATIC_WEB_APP_URL }}
-      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ steps.load_infra.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+      STATIC_WEB_APP_NAME: ${{ steps.load_infra.outputs.STATIC_WEB_APP_NAME }}
       infra_loaded: ${{ steps.load_infra.outputs.infra_loaded }}
     steps:
       - name: Download infra outputs
@@ -55,7 +55,7 @@ jobs:
           echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_OUTPUT
           echo "RG=$resourceGroupName" >> $GITHUB_OUTPUT
           echo "STATIC_WEB_APP_URL=$staticWebUrl" >> $GITHUB_OUTPUT
-          echo "AZURE_STATIC_WEB_APPS_API_TOKEN=$staticWebAppDeploymentToken" >> $GITHUB_OUTPUT
+          echo "STATIC_WEB_APP_NAME=$staticWebAppName" >> $GITHUB_OUTPUT
           echo "infra_loaded=true" >> $GITHUB_OUTPUT
 
 
@@ -90,17 +90,35 @@ jobs:
     environment: development
     needs: download_infra_outputs
     env:
-      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ needs.download_infra_outputs.outputs.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+      RG: ${{ needs.download_infra_outputs.outputs.RG }}
+      STATIC_WEB_APP_NAME: ${{ needs.download_infra_outputs.outputs.STATIC_WEB_APP_NAME }}
     permissions:
       contents: read 
       pull-requests: write 
+      id-token: write # Required for azure/login
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      # NEW: Login to Azure to fetch secrets
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # NEW: Fetch the token securely
+      - name: Get SWA Deployment Token
+        id: get_token
+        run: |
+          TOKEN=$(az staticwebapp secrets list --name ${{ env.STATIC_WEB_APP_NAME }} --resource-group ${{ env.RG }} --query "properties.apiKey" -o tsv)
+          echo "::add-mask::$TOKEN"
+          echo "SWA_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
+
       - name: Download Nuxt build artifact
         uses: dawidd6/action-download-artifact@v6
         with:
-          # run_id: ${{ github.event.workflow_run.id }}
           workflow: ci-build.yaml
           workflow_conclusion: success
           name: nuxt-output
@@ -112,8 +130,9 @@ jobs:
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }} 
-          repo_token: ${{ secrets.GITHUB_TOKEN }} 
+          # CHANGE: Use the securely fetched token
+          azure_static_web_apps_api_token: ${{ steps.get_token.outputs.SWA_TOKEN }} 
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: ${{ env.APP_LOCATION }}
           skip_app_build: true

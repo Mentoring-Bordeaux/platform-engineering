@@ -88,6 +88,9 @@ export const staticWebAppDeploymentToken = staticWebAppSecrets.apply(secrets =>
 );
 
 export const staticWebUrl = staticApp.defaultHostname;
+
+export const staticWebAppName = staticApp.name;
+
 export const backendUrl = backend.latestRevisionFqdn.apply(fqdn => `https://${fqdn}`);
 export const resourceGroupName = rg.name;
 export const containerRegistryName = acr.name;
