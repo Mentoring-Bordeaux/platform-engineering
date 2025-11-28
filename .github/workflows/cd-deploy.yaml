@@ -132,7 +132,6 @@ jobs:
         with:
           # CHANGE: Use the securely fetched token
           azure_static_web_apps_api_token: ${{ steps.get_token.outputs.SWA_TOKEN }} 
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: ${{ env.APP_LOCATION }}
           skip_app_build: true
