@@ -19,4 +19,19 @@ Accept: application/json
 }
 
 
+POST {{api_HostAddress}}/create-ressource
+Content-Type: application/json
+Accept: application/json
+
+{
+    "Name": "my-ressorce",
+    "Parameters": {
+        "type": "ressource type",
+        "parameter1": "parameter",
+        "parameter2": "parameter",
+        "parameter": "parameter"
+    }
+}
+
+
 ###
