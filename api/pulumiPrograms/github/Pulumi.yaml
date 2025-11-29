@@ -10,7 +10,7 @@ template:
     githubToken:
       description: "GitHub Token with repo permissions"
       secret: true
-    repoName:
+    Name:
       description: "Name of the GitHub repository to create"
       default: "my-new-repo"
     description:

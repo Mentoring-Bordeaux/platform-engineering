@@ -6,21 +6,12 @@ const config = new pulumi.Config();
 
 // Receive configuration values from the Pulumi stack configuration.
 const githubToken = config.require("githubToken");
-const repoName = config.require("repoName");
+const repoName = config.require("Name");
 const description = config.get("description") || "Managed by Pulumi Automation API.";
 const isPrivate = config.requireBoolean("isPrivate");
 const orgName = config.get("orgName"); // Optional: organization name
 
 // Log the received configuration for debugging purposes.
-pulumi.log.info(`Creating repository: ${repoName}`);
-pulumi.log.info(`Description: ${description}`);
-pulumi.log.info(`Private: ${isPrivate}`);
-if (orgName) {
-    pulumi.log.info(`Organization: ${orgName}`);
-} else {
-    pulumi.log.info(`Creating repository under the authenticated user's account.`);
-}
-
 let githubProvider;
 
 if (orgName) {

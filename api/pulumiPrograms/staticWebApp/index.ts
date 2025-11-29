@@ -4,18 +4,20 @@ import * as azure from "@pulumi/azure-native";
 const config = new pulumi.Config();
 const projectPrefix = config.require("Name");
 
-const resourceGroup = new azure.resources.ResourceGroup(`rg-${projectPrefix}-`, {
+const projectPrefixFormated = projectPrefix.toLowerCase()
+
+const resourceGroup = new azure.resources.ResourceGroup(`rg-${projectPrefixFormated}-`, {
     location: "westeurope",
 });
 
-const storageAccount = new azure.storage.StorageAccount(`st${projectPrefix}`, {
+const storageAccount = new azure.storage.StorageAccount(`st${projectPrefixFormated}`, {
     resourceGroupName: resourceGroup.name,
     sku: { name: azure.storage.SkuName.Standard_LRS },
     kind: azure.storage.Kind.StorageV2,
     enableHttpsTrafficOnly: true,
 });
 
-const staticWebsite = new azure.storage.StorageAccountStaticWebsite(`stw-${projectPrefix}-`, {
+const staticWebsite = new azure.storage.StorageAccountStaticWebsite(`stw-${projectPrefixFormated}-`, {
     accountName: storageAccount.name,
     resourceGroupName: resourceGroup.name,
     indexDocument: "index.html",
