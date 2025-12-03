@@ -16,13 +16,24 @@ public class PulumiService
 
         Console.WriteLine($"Determining resource type from request parameters... {string.Join(", ", request.Parameters.Select(kv => $"{kv.Key}={kv.Value}"))}");
 
-        if (!request.Parameters.TryGetValue("type", out var resourceType) || !_resourceWorkDirs.ContainsKey(resourceType)){
-            Console.WriteLine("Invalid or missing resource type in request parameters.");
-            return Results.BadRequest("Invalid or missing resource type");
-        }
+        // if (!request.Parameters.TryGetValue("type", out var resourceType) || !_resourceWorkDirs.ContainsKey(resourceType)){
+        //     Console.WriteLine("Invalid or missing resource type in request parameters.");
+        //     return Results.BadRequest("Invalid or missing resource type");
+        // }
 
-        string workingDir = _resourceWorkDirs[resourceType];
-        
+        //string workingDir = _resourceWorkDirs[resourceType];
+         if (!request.Parameters.TryGetValue("type", out var resourceType) || string.IsNullOrWhiteSpace(resourceType))
+            return Results.BadRequest("Missing 'type' parameter");
+        var workingDir = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "pulumiPrograms",
+            resourceType
+        );
+
+        if (!Directory.Exists(workingDir))
+            return Results.BadRequest($"Pulumi program not found for type '{resourceType}' at path '{workingDir}'.");
+
+
         string requestAndType = $"{request.Name}-{resourceType}";
 
         string stackName = Regex.Replace(requestAndType.ToLower(), @"[^a-z0-9\-]", "-");
