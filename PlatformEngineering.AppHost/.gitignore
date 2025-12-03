@@ -1,0 +1,22 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# User Secrets (Local development secrets)
+Secrets/
+
+# Aspire specific (logs or temp data if generated locally outside of obj)
+# Usually covered by standard .NET rules, but good to keep clean.
+
+# Environment specific settings (Optional: keep if you want to share dev config)
+# appsettings.Development.json
