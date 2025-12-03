@@ -9,19 +9,20 @@ importers:
   .:
     dependencies:
       '@pulumi/github':
-        specifier: ^6.8.0
+        specifier: '*'
         version: 6.8.0(ts-node@10.9.2(@types/node@24.9.2)(typescript@5.9.3))(typescript@5.9.3)
       '@pulumi/pulumi':
-        specifier: ^3.205.0
+        specifier: '*'
         version: 3.205.0(ts-node@10.9.2(@types/node@24.9.2)(typescript@5.9.3))(typescript@5.9.3)
+    devDependencies:
       '@types/node':
-        specifier: ^24.9.2
+        specifier: '*'
         version: 24.9.2
       ts-node:
-        specifier: ^10.9.2
+        specifier: '*'
         version: 10.9.2(@types/node@24.9.2)(typescript@5.9.3)
       typescript:
-        specifier: ^5.9.3
+        specifier: '*'
         version: 5.9.3
 
 packages:
