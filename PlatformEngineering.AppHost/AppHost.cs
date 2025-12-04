@@ -1,21 +1,21 @@
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Add API service
-var api = builder.AddProject<Projects.api>("api")
-                 .WithExternalHttpEndpoints();
 
 // Add app
 var app = builder.AddViteApp("app", "../app")
     .WithPnpm()
-    .WithReference(api)
-    .WaitFor(api)
-    .WithEnvironment(context =>
-    {
-        var endpoint = api.GetEndpoint("http");
-        context.EnvironmentVariables["NUXT_API_URL"] = endpoint.Url;
-    })
     .WithExternalHttpEndpoints();
+
+// Add API service with reference to app for CORS service discovery
+var api = builder.AddProject<Projects.api>("api")
+                 .WithReference(app)
+                 .WithExternalHttpEndpoints();
+
+// Configure app to reference API
+app.WithReference(api)
+   .WaitFor(api)
+   .WithEnvironment("NUXT_API_URL", api.GetEndpoint("https"));
 
 
 builder.Build().Run();
