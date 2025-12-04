@@ -4,7 +4,20 @@ runtime:
   name: nodejs
   options:
     packagemanager: pnpm
-config:
-  pulumi:tags:
-    value:
-      pulumi:template: azure-typescript
+template:
+  displayName: "Create Azure App Service"
+  description: "A template for creating Azure App Service with Pulumi"
+  config:
+    appName:
+      description: "Name of the App Service"
+    location:
+      description: "Azure region"
+      default: "westeurope"
+    sku:
+      description: "App Service Plan SKU (B1, S1, P1v2...)"
+    runtimeStack:
+      description: "Runtime stack for App Service (DOTNET, NODE, PYTHON....)"
+
+
+
+  
