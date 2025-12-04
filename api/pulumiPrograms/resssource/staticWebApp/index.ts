@@ -2,32 +2,21 @@ import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 
 const config = new pulumi.Config();
-const projectPrefix = config.require("Name");
+const projectPrefix = config.require("appName");
+const location = config.get("location") || "westeurope";
+const skuName = config.get("skuName") || "Free";
+const skuTier = config.get("skuTier") || "Free";
 
 const projectPrefixFormated = projectPrefix.toLowerCase()
 
 const resourceGroup = new azure.resources.ResourceGroup(`rg-${projectPrefixFormated}-`, {
-    location: "westeurope",
+    location: location,
 });
 
-const storageAccount = new azure.storage.StorageAccount(`st${projectPrefixFormated}`, {
+const staticWebApp = new azure.web.StaticSite(`stapp-${projectPrefixFormated}-`, {
     resourceGroupName: resourceGroup.name,
-    sku: { name: azure.storage.SkuName.Standard_LRS },
-    kind: azure.storage.Kind.StorageV2,
-    enableHttpsTrafficOnly: true,
+    sku: { name: skuName, tier: skuTier },
+    buildProperties: {}
 });
 
-const staticWebsite = new azure.storage.StorageAccountStaticWebsite(`stw-${projectPrefixFormated}-`, {
-    accountName: storageAccount.name,
-    resourceGroupName: resourceGroup.name,
-    indexDocument: "index.html",
-});
-
-const indexFile = new azure.storage.Blob("index.html", {
-    resourceGroupName: resourceGroup.name,
-    accountName: storageAccount.name,
-    containerName: "$web",
-    source: new pulumi.asset.FileAsset("www/index.html"),
-    contentType: "text/html",
-});
-export const staticWebsiteUrl = storageAccount.primaryEndpoints.apply(pe => pe.web);
+export const url = pulumi.interpolate`https://${staticWebApp.defaultHostname}`;
