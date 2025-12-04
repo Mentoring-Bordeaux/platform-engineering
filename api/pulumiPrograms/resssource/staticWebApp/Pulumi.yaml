@@ -1,10 +1,18 @@
 name: staticWebApp
-description: Test a basic template for creationg a static web app
+description: "Test a basic template for creating a static web app on Azure"
 runtime:
   name: nodejs
   options:
     packagemanager: pnpm
-config:
-  pulumi:tags:
-    value:
-      pulumi:template: azure-typescript
+template:
+  displayName: "Create Azure Static Web App"
+  description: "A template for creating Azure Static Web Apps with Pulumi"
+  config:
+    appName:
+      description: "Name of the Static Web App"
+    location:
+      description: "Azure region"
+    skuName:
+      description: "SKU name (Free, Standard, etc.)"
+    skuTier:
+      description: "SKU tier"
