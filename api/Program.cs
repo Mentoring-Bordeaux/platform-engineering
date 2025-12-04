@@ -23,13 +23,16 @@ builder.Services.AddCors(options =>
     options.AddPolicy("NuxtPolicy",
         policy =>
         {
-            // Retrieve the Nuxt app URL from environment variables and allow it
-            var nuxtAppUrl = System.Environment.GetEnvironmentVariable("NUXT_APP_URL") ?? "http://localhost:3001"; // Can't be null  (TODO: throw error if null?)
+            // Use Aspire service discovery to get the app URL, fallback to env var or default
+            var nuxtAppUrl = builder.Configuration["services:app:https:0"]
+                ?? builder.Configuration["services:app:http:0"]
+                ?? System.Environment.GetEnvironmentVariable("NUXT_APP_URL")
+                ?? "http://localhost:3001";
+
             Console.WriteLine($"Configuring CORS to allow requests from: {nuxtAppUrl}");
             policy.WithOrigins(nuxtAppUrl)
                   .AllowAnyHeader()
                   .AllowAnyMethod();
-
         });
 });
 
@@ -68,7 +71,8 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
         var stackArgs = new LocalProgramArgs(stackName, workingDir);
         stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
 
-
+        // Install Pulumi dependencies (required for TypeScript programs)
+        await stack.Workspace.InstallAsync();
 
         if (string.IsNullOrEmpty(githubToken))
         {
@@ -177,7 +181,9 @@ async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
         var stackArgs = new LocalProgramArgs(stackName, workingDir);
         var stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
 
-        
+        // Install Pulumi dependencies (required for TypeScript programs)
+        await stack.Workspace.InstallAsync();
+
         await stack.SetConfigAsync("Name", new ConfigValue(request.Name));
 
         var result = await stack.UpAsync(new UpOptions
@@ -187,7 +193,7 @@ async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
         });
 
         var outputs = result.Outputs.ToDictionary(
-            kv => kv.Key, 
+            kv => kv.Key,
             kv => kv.Value?.Value
         );
         return TypedResults.Json(outputs, statusCode: 200);

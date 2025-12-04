@@ -16,4 +16,19 @@
     <PackageReference Include="Pulumi.Automation" Version="3.91.0" />
   </ItemGroup>
 
+  <!-- Copy all Pulumi program files to output directory -->
+  <ItemGroup>
+    <None Include="pulumiPrograms\**\*" Exclude="pulumiPrograms\**\node_modules\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="pulumiPrograms\**\node_modules\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Exclude pulumiPrograms from default Content items -->
+  <ItemGroup>
+    <Content Remove="pulumiPrograms\**\*" />
+  </ItemGroup>
+
 </Project>
