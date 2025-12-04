@@ -71,7 +71,8 @@ async Task<IResult> CreateGitHubRepository(CreateRepoRequest request, IConfigura
         var stackArgs = new LocalProgramArgs(stackName, workingDir);
         stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
 
-
+        // Install Pulumi dependencies (required for TypeScript programs)
+        await stack.Workspace.InstallAsync();
 
         if (string.IsNullOrEmpty(githubToken))
         {
@@ -180,6 +181,8 @@ async Task<IResult> CreateStaticWebapp(StaticWebSiteRequest request)
         var stackArgs = new LocalProgramArgs(stackName, workingDir);
         var stack = await LocalWorkspace.CreateOrSelectStackAsync(stackArgs);
 
+        // Install Pulumi dependencies (required for TypeScript programs)
+        await stack.Workspace.InstallAsync();
 
         await stack.SetConfigAsync("Name", new ConfigValue(request.Name));
 
