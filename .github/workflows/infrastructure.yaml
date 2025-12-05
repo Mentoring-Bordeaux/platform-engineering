@@ -1,6 +1,8 @@
 name: infrastructure
 
 on:
+  push:
+    branches: [main, feature/pipelines]
   workflow_dispatch:
 
 concurrency:
