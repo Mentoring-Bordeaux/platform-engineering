@@ -1,0 +1,155 @@
+name: ci-build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'app/**'
+      - '.github/workflows/ci-build.yaml'
+      - '.github/workflows/cd-deploy.yaml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}-ci-build
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  actions: write
+env:
+  IMAGE_TAG: ${{ github.sha }}
+jobs:
+  backend: 
+    name: Backend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      
+      - name: dotnet restore
+        run: dotnet restore 
+    
+
+      - name: dotnet build
+        run: dotnet build --no-restore 
+
+      - name: dotnet test
+        run: dotnet test --no-build --verbosity normal
+
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable pnpm
+        run: corepack enable
+        working-directory: ./app
+
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./app
+
+      - name: Lint
+        run: pnpm run lint --fix
+        working-directory: ./app
+
+      - name: Build Nuxt
+        run: pnpm run build
+        working-directory: ./app
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuxt-output
+          path: app/.output/
+          include-hidden-files: true
+
+  build-and-push:
+    environment: development
+    needs: [backend]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Get ACR info from Infra outputs artifact ---
+      - name: Download infra outputs
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: infrastructure.yaml
+          workflow_conclusion: success
+          name: infra-outputs
+          path: infrastructure
+
+      - name: Load infra outputs
+        id: load_infra
+        shell: bash
+        run: |
+          if [ ! -f infrastructure/infra.outputs.env ]; then
+            echo "::error::Missing infra.outputs.env. Run Infrastructure at least once on this branch."
+            exit 1
+          fi
+          set -a; source infrastructure/infra.outputs.env; set +a
+          # Expect key 'acrServer' from Pulumi outputs
+          if [ -z "${acrServer:-}" ]; then
+            echo "::error::acrServer not found in infra.outputs.env"
+            echo "Contents:"; cat infrastructure/infra.outputs.env || true
+            exit 1
+          fi
+          echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
+          echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_ENV  
+          echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_ENV  
+            
+      # --- Push images to ACR ---
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name "${{ env.ACR_REGISTRY_NAME }}"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:${{ env.IMAGE_TAG }}
+            ${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:latest
+          cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache
+          cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache,mode=max

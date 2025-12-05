@@ -1,0 +1,78 @@
+name: infrastructure
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}-infrastructure
+  cancel-in-progress: true
+  
+permissions:
+  id-token: write
+  contents: read
+  actions: write
+
+jobs:
+  create-infrastructure:
+    environment: development
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+
+      - name: Enable pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Install dependencies
+        if: hashFiles('infrastructure/pnpm-lock.yaml') != ''
+        run: pnpm install --frozen-lockfile
+
+      - name: Allow non-interactive Pulumi up
+        run: echo "PULUMI_YES=1" >> $GITHUB_ENV
+
+      - name: Build TypeScript (if script present)
+        run: pnpm run --if-present build
+      
+      - name: Pulumi Auth
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: teachingiac
+          requested-token-type: urn:pulumi:token-type:access_token:team
+          scope: team:Enseirb_students
+
+      - name: Pulumi Up
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: teachingiac/platform-engineering-infra/dev
+          work-dir: infrastructure
+
+      - name: Export Pulumi outputs
+        run: |
+          pulumi stack output --stack teachingiac/platform-engineering-infra/dev --json > outputs.json
+          jq -r 'to_entries|.[]|"\(.key)=\(.value)"' outputs.json > infra.outputs.env
+          cat infra.outputs.env
+
+      - name: Upload infra outputs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: infra-outputs
+          path: infrastructure/infra.outputs.env
+          retention-days: 3
