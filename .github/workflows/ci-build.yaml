@@ -2,7 +2,7 @@ name: ci-build
 
 on:
   push:
-    branches: [main, feature/pipelines]
+    branches: [main]
     paths:
       - 'api/**'
       - 'app/**'
@@ -92,7 +92,7 @@ jobs:
   build-and-push:
     environment: development
     needs: [backend]
-    # if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
