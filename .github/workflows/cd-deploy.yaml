@@ -67,12 +67,11 @@ jobs:
   deploy-api-aca:
     environment: development
     needs: download_infra_outputs
-    if: needs.download_infra.outputs.infra_loaded == 'true'
+    if: needs.download_infra_outputs.outputs.infra_loaded == 'true'
     env:
-      RG:               ${{ needs.download_infra.outputs.RG }}
-      ACR_NAME:         ${{ needs.download_infra.outputs.ACR_NAME }}
-      ACR_LOGIN_SERVER: ${{ needs.download_infra.outputs.ACR_LOGIN_SERVER }}
-
+      RG:               ${{ needs.download_infra_outputs.outputs.RG }}
+      ACR_NAME:         ${{ needs.download_infra_outputs.outputs.ACR_NAME }}
+      ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
