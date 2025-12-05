@@ -96,4 +96,3 @@ export const resourceGroupName = rg.name;
 export const containerRegistryName = acr.name;
 export const containerAppName = backend.name;
 export const acrServer = acr.loginServer;
-export const staticEndpoint = staticApp.defaultHostname.apply(h => `https://${h}`);
