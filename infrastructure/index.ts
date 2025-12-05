@@ -96,16 +96,4 @@ export const resourceGroupName = rg.name;
 export const containerRegistryName = acr.name;
 export const containerAppName = backend.name;
 export const acrServer = acr.loginServer;
-
-// Link Static Web App to the backend (similar to StaticSiteLinkedBackend in C#)
-const staticSiteLinkedBackend = new web.StaticSiteLinkedBackend(`backlink-${projectPrefix}`, {
-    resourceGroupName: resourceGroupName,
-    staticSiteName: staticWebAppName,
-    backendResourceId: backend.id,                // resource id of the backend (Container App / App Service)
-    linkedBackendName: pulumi.interpolate`backend-${projectPrefix}`,
-    region: rg.location,
-});
-
-// Export endpoints for use by other stacks/workflows
 export const staticEndpoint = staticApp.defaultHostname.apply(h => `https://${h}`);
-export const backendEndpoint = backend.latestRevisionFqdn.apply(fqdn => `https://${fqdn}`);
