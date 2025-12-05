@@ -1,6 +1,8 @@
 name: infrastructure
 
 on:
+  push:
+    branches: [main, feature/pipelines]
   workflow_dispatch:
 
 concurrency:
@@ -76,3 +78,21 @@ jobs:
           name: infra-outputs
           path: infrastructure/infra.outputs.env
           retention-days: 3
+
+  trigger-ci-build:
+    needs: [create-infrastructure]
+    environment: development
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger ci-build workflow
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/ci-build.yaml/dispatches \
+            -d '{"ref":"feature/pipelines"}'
