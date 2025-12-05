@@ -21,7 +21,7 @@ permissions:
 jobs:
   download_infra_outputs:
     # CHANGE: Check 'workflow_run.event' to filter out PR builds
-    # if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request') || github.event_name == 'workflow_dispatch' }}
+    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       ACR_LOGIN_SERVER: ${{ steps.load_infra.outputs.ACR_LOGIN_SERVER }}
@@ -95,8 +95,8 @@ jobs:
     environment: development
     needs: download_infra_outputs
     env:
-      RG: ${{ needs.download_infra.outputs.RG }}
-      STATIC_WEB_APP_NAME: ${{ needs.download_infra.outputs.STATIC_WEB_APP_NAME }}
+      RG: ${{ needs.download_infra_outputs.outputs.RG }}
+      STATIC_WEB_APP_NAME: ${{ needs.download_infra_outputs.outputs.STATIC_WEB_APP_NAME }}
     permissions:
       contents: read 
       pull-requests: write 
