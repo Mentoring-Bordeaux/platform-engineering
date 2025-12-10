@@ -4,25 +4,13 @@ using System.Text.RegularExpressions;
 
 public class PulumiService
 {
-    private readonly Dictionary<string, string> _resourceWorkDirs = new()
-    {
-        { "github-repo", Path.Combine(Directory.GetCurrentDirectory(), "pulumiPrograms", "github") },
-        { "static-webapp", Path.Combine(Directory.GetCurrentDirectory(), "pulumiPrograms", "staticWebApp") }
-    };
-
     public async Task<IResult> ExecuteAsync(TemplateRequest request)
     {
         Console.WriteLine($"Received request to create resource: {request.Name}");
 
         Console.WriteLine($"Determining resource type from request parameters... {string.Join(", ", request.Parameters.Select(kv => $"{kv.Key}={kv.Value}"))}");
 
-        // if (!request.Parameters.TryGetValue("type", out var resourceType) || !_resourceWorkDirs.ContainsKey(resourceType)){
-        //     Console.WriteLine("Invalid or missing resource type in request parameters.");
-        //     return Results.BadRequest("Invalid or missing resource type");
-        // }
-
-        //string workingDir = _resourceWorkDirs[resourceType];
-         if (!request.Parameters.TryGetValue("type", out var resourceType) || string.IsNullOrWhiteSpace(resourceType))
+        if (!request.Parameters.TryGetValue("type", out var resourceType) || string.IsNullOrWhiteSpace(resourceType))
             return Results.BadRequest("Missing 'type' parameter");
         var workingDir = Path.Combine(
             Directory.GetCurrentDirectory(),
@@ -65,5 +53,4 @@ public class PulumiService
             return Results.Problem(ex.Message, statusCode: 500);
         }
     }
-
 }
