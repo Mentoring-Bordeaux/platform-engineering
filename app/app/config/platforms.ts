@@ -5,22 +5,16 @@ import type { Platform } from '~/types'
  */
 export const PLATFORMS = {
   github: {
-    name: 'GitHub',
+    platformType: 'GitHub',
     icon: 'devicon:github',
     config: {
-      RepoName: {
-        type: 'text',
-        required: true,
-        label: 'Repository Name',
-        description: 'The name of the GitHub repository to create.'
-      },
       Description: {
         type: 'textarea',
         label: 'Repository Description',
         description: 'A brief description of the GitHub repository.',
         default: ''
       },
-      Private: {
+      isPrivate: {
         type: 'boolean',
         label: 'Private Repository',
         description: 'Whether the repository should be private or public.',
@@ -29,15 +23,9 @@ export const PLATFORMS = {
     }
   },
   gitlab: {
-    name: 'GitLab',
+    platformType: 'GitLab',
     icon: 'devicon:gitlab',
     config: {
-      name: {
-        type: 'text',
-        required: true,
-        label: 'Repository Name',
-        description: 'The name of the GitLab repository to create.'
-      },
       description: {
         type: 'textarea',
         label: 'Description',

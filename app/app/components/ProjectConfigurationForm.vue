@@ -2,7 +2,11 @@
   <UModal v-model:open="isLoading">
     <template #content>
       <div class="flex flex-col items-center justify-center gap-4 p-6">
-        <span aria-live="assertive" class="sr-only">Loading, creating your project repository</span>
+        <span
+          aria-live="assertive"
+          class="sr-only"
+          >Loading, creating your project repository</span
+        >
         <USkeleton class="bg-primary h-5 w-5 rounded-full" />
         <div class="flex flex-col items-center justify-center text-center">
           <p>Creating your project repository</p>
@@ -11,38 +15,97 @@
       </div>
     </template>
   </UModal>
-  <UForm :state="state as any" :schema="validationSchema" class="w-full max-w-4xl" @error="handleFormValidationErrors"
-    @submit="onSubmit">
+  <UForm
+    :state="state as any"
+    :schema="validationSchema"
+    class="w-full max-w-4xl"
+    @error="handleFormValidationErrors"
+    @submit="onSubmit"
+  >
     <!-- Resource Configurations -->
-    <FormSection v-for="(resource, index) in resources" :key="`resource-${resource.name}-${index}`"
-      :title="`${resource.name} Configuration`">
-      <UFormField v-for="(configOption, configKey) in resource.config" :key="`resources.${index}.config.${configKey}`"
-        :name="`resources.${index}.config.${configKey}`" :label="configOption.label"
-        :required="configOption.required || false">
-        <GenericFormInput v-model="state.resources[index]!.config[configKey]" :config-option="configOption"
-          :placeholder="configOption.description" class="w-full" />
+    <FormSection
+      v-for="(resource, index) in resources"
+      :key="`resource-${resource.resourceType}-${index}`"
+      :title="`${resource.resourceType} Configuration`"
+    >
+      <UFormField
+        :name="`resources.${index}.name`"
+        label="Resource Name"
+        required
+      >
+        <UInput
+          v-model="state.resources[index]!.name"
+          placeholder="Enter resource name"
+          class="w-full"
+        />
+      </UFormField>
+      <UFormField
+        v-for="(configOption, configKey) in resource.config"
+        :key="`resources.${index}.config.${configKey}`"
+        :name="`resources.${index}.config.${configKey}`"
+        :label="configOption.label"
+        :required="configOption.required || false"
+      >
+        <GenericFormInput
+          v-model="state.resources[index]!.config[configKey]"
+          :config-option="configOption"
+          :placeholder="configOption.description"
+          class="w-full"
+        />
       </UFormField>
     </FormSection>
 
     <!-- Platform Configuration -->
-    <FormSection :title="`${platform.name} Configuration`">
-      <UFormField v-for="(configOption, configKey) in platform.config"
-        :key="`platform-${platform.name}-${configOption.label}-${configKey}`" :name="`platform.config.${configKey}`"
-        :label="configOption.label" :required="configOption.required || false" :class="configOption.type === 'boolean'
-          ? 'flex items-center justify-between py-2'
-          : ''
-          ">
-        <GenericFormInput v-model="state.platform.config[configKey]" :config-option="configOption"
-          :placeholder="configOption.description" class="w-full" />
+    <FormSection :title="`${platform.platformType} Configuration`">
+      <UFormField
+        name="platform.name"
+        label="Platform Name"
+        required
+      >
+        <UInput
+          v-model="state.platform.name"
+          placeholder="Enter repo name"
+          class="w-full"
+        />
+      </UFormField>
+      <UFormField
+        v-for="(configOption, configKey) in platform.config"
+        :key="`platform-${platform.platformType}-${configOption.label}-${configKey}`"
+        :name="`platform.config.${configKey}`"
+        :label="configOption.label"
+        :required="configOption.required || false"
+        :class="
+          configOption.type === 'boolean'
+            ? 'flex items-center justify-between py-2'
+            : ''
+        "
+      >
+        <GenericFormInput
+          v-model="state.platform.config[configKey]"
+          :config-option="configOption"
+          :placeholder="configOption.description"
+          class="w-full"
+        />
       </UFormField>
     </FormSection>
 
     <!-- Action Buttons -->
     <div class="flex w-full justify-between">
-      <UButton icon="i-lucide-arrow-left" size="md" variant="outline" @click="handleBackPress">
+      <UButton
+        icon="i-lucide-arrow-left"
+        size="md"
+        variant="outline"
+        @click="handleBackPress"
+      >
         Back
       </UButton>
-      <UButton icon="i-lucide-check" size="md" variant="solid" class="cursor-pointer" type="submit">
+      <UButton
+        icon="i-lucide-check"
+        size="md"
+        variant="solid"
+        class="cursor-pointer"
+        type="submit"
+      >
         Create Project
       </UButton>
     </div>
@@ -80,11 +143,13 @@ interface ConfigurationFormState {
 
 const state = ref<ConfigurationFormState>({
   resources: resources.value.map(resource => ({
-    name: resource.name,
+    name: '',
+    resourceType: resource.resourceType,
     config: generateDefaultConfig(resource.config)
   })),
   platform: {
-    name: platform.value.name,
+    name: '',
+    platformType: platform.value.platformType,
     config: generateDefaultConfig(platform.value.config)
   }
 })
@@ -114,6 +179,11 @@ function handleFormValidationErrors(error: unknown) {
   console.error('Form validation errors:', error)
 }
 
+function formatResourceType(str: string): string {
+  const resourceType = str.replace(/\s+/g, '-')
+  return resourceType.toLowerCase().trim()
+}
+
 // Submit action
 async function onSubmit() {
   console.log('Configuration submitted:', {
@@ -122,40 +192,96 @@ async function onSubmit() {
   })
 
   isLoading.value = true
-  interface RepoCreationResponse {
-  repoName: string
-  repoUrl: string
-}
-  const { data, error } = await useFetch<RepoCreationResponse>('/create-repo', {
+
+  interface RequestReponse {
+    name: string
+    ressourceType: string
+    statusCode: number
+    message: string
+    outputs?: Record<string, unknown>
+  }
+
+  interface RequestElementTemplate {
+    name: string
+    resourceType: string
+    framework?: string
+    parameters: Record<string, string>
+  }
+
+  const listRessources: RequestElementTemplate[] = state.value.resources.map(
+    (resource): RequestElementTemplate => {
+      return {
+        name: resource.name,
+        resourceType: 'resources//' + formatResourceType(resource.resourceType),
+        parameters: Object.fromEntries(
+          Object.entries(resource.config).map(([key, value]) => [
+            key,
+            String(value)
+          ])
+        )
+      }
+    }
+  )
+
+  listRessources.push({
+    name: state.value.platform.name,
+    resourceType:
+      'platforms//' + formatResourceType(state.value.platform.platformType),
+    parameters: Object.fromEntries(
+      Object.entries(state.value.platform.config).map(([key, value]) => [
+        key,
+        String(value)
+      ])
+    )
+  })
+
+  console.log('Sending resources to API:', listRessources)
+
+  const { data, error } = await useFetch<RequestReponse[]>('/create-project', {
     server: false,
     baseURL: config.public.apiBase,
     method: 'POST',
-    body: state.value.platform.config,
+    body: listRessources,
     watch: false
   })
   isLoading.value = false
 
   if (error.value) {
     console.error('Error creating repository:', error.value.data)
+
+    const title =
+      error.value.statusCode === 400
+        ? 'Invalid Configuration'
+        : 'Error Creating Resources'
+
+    const message = error.value.data
+      .map(
+        (err: RequestReponse) =>
+          `- ${err.message} to ${err.name} of type ${err.ressourceType}`
+      )
+      .join('\n')
     openModal({
-      title: error.value.data?.title || 'Repository Creation Error',
+      title: title,
       body:
-        error.value.data?.detail ||
-        'There was an error creating the project repository. Please try again.'
+        message ||
+        'There was an unexpected error while creating your project resources. Please try again.'
     })
     return
   }
   if (data.value) {
-    if (data.value) {
-      console.log('Repository created successfully:', data.value)
-      openModal({
-        title: 'Your Project is Ready!',
-        body: 'Your project repository has been created successfully!\
-  You can now access it on GitHub at the following link: \n' +
-          `${data.value.repoUrl}`
-      })
-      return
-    }
+    const message = data.value
+      .map(
+        (data: RequestReponse) =>
+          `- ${data.name} of type ${data.ressourceType} created successfully. \n
+            ${data.outputs ? JSON.stringify(data.outputs) : ''}`
+      )
+      .join('\n')
+    console.log('Repository created successfully:', data.value)
+    openModal({
+      title: 'Your Project is Ready!',
+      body: `Ressources created successfully. ${message}`
+    })
+    return
   }
 }
 
