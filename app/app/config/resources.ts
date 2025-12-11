@@ -5,15 +5,9 @@ import type { Resource } from '~/types'
  */
 export const RESOURCES = {
   swa: {
-    name: 'Static Web App',
+    resourceType: 'Static Web App',
     icon: 'devicon:azure',
     config: {
-      name: {
-        type: 'text',
-        required: true,
-        label: 'Project Name',
-        description: 'The name of the Static Web App project.'
-      },
       framework: {
         type: 'enum',
         required: true,
@@ -39,7 +33,7 @@ export const RESOURCES = {
     }
   },
   'azure-app-service': {
-    name: 'Azure App Service',
+    resourceType: 'Azure App Service',
     icon: 'devicon:azure',
     config: {
       description: {
@@ -51,7 +45,7 @@ export const RESOURCES = {
     }
   },
   'azure-cosmosdb': {
-    name: 'Azure Cosmos DB',
+    resourceType: 'Azure Cosmos DB',
     icon: 'devicon:azure',
     config: {
       description: {
@@ -63,7 +57,7 @@ export const RESOURCES = {
     }
   },
   'aws-lambda': {
-    name: 'AWS Lambda',
+    resourceType: 'AWS Lambda',
     icon: 'devicon:amazonwebservices',
     config: {
       description: {
