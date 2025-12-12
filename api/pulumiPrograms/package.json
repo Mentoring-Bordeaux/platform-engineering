@@ -1,0 +1,14 @@
+{
+  "name": "pulumiPrograms",
+  "private": true,
+  "dependencies": {
+    "@pulumi/azure-native": "^3.0.0",
+    "@pulumi/github": "^6.8.0",
+    "@pulumi/pulumi": "^3.0.0"
+  },
+    "devDependencies": {
+        "@types/node": "^18",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.0.0"
+    }
+}

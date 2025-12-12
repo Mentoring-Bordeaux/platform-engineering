@@ -1,0 +1,13 @@
+{
+    "name": "staticWebApp",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/node": "*",
+        "typescript": "*",
+        "ts-node": "*"
+    },
+    "dependencies": {
+        "@pulumi/azure-native": "*",
+        "@pulumi/pulumi": "*"
+    }
+}

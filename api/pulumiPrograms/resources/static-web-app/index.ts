@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 
 const config = new pulumi.Config();
-const projectPrefix = config.require("appName");
+const projectPrefix = config.require("Name");
 const location = config.get("location") || "westeurope";
 const skuName = config.get("skuName") || "Free";
 const skuTier = config.get("skuTier") || "Free";
