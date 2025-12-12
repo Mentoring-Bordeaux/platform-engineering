@@ -9,7 +9,7 @@ const githubToken = config.require("githubToken");
 const repoName = config.require("Name");
 const description = config.get("description") || "Managed by Pulumi Automation API.";
 const isPrivate = config.requireBoolean("isPrivate");
-const orgName = config.get("orgName"); // Optional: organization name
+const orgName = config.get("githubOrganizationName"); // Optional: organization name
 
 // Log the received configuration for debugging purposes.
 let githubProvider;
