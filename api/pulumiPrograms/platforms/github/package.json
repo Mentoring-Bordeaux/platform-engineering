@@ -11,10 +11,12 @@
   "license": "ISC",
   "packageManager": "pnpm@10.18.2",
   "dependencies": {
-    "@pulumi/github": "^6.8.0",
-    "@pulumi/pulumi": "^3.205.0",
-    "@types/node": "^24.9.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "@pulumi/github": "*",
+    "@pulumi/pulumi": "*"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "typescript": "*",
+    "ts-node": "*"
   }
 }
