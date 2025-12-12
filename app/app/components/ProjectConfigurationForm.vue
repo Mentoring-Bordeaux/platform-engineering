@@ -254,6 +254,23 @@ async function onSubmit() {
         ? 'Invalid Configuration'
         : 'Error Creating Resources'
 
+    if (!error.value.data) {
+      openModal({
+        title: title,
+        body: 'There was an unexpected error while creating your project resources. Please try again.'
+      })
+      return
+    }
+
+    if (!Array.isArray(error.value.data)) {
+      openModal({
+        title: title,
+        body:
+          error.value.data.message ||
+          'There was an unexpected error while creating your project resources. Please try again.'
+      })
+      return
+    }
     const message = error.value.data
       .map(
         (err: RequestReponse) =>
