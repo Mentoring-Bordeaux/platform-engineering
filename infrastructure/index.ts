@@ -5,6 +5,7 @@ import * as containerapp from "@pulumi/azure-native/app";
 import * as containerregistry from "@pulumi/azure-native/containerregistry";
 import * as managedidentity from "@pulumi/azure-native/managedidentity";
 import * as authorization from "@pulumi/azure-native/authorization";
+import * as azure_native from "@pulumi/azure-native";
 
 
 const projectPrefix = "platformeng"; 
@@ -13,9 +14,8 @@ const rg = new resources.ResourceGroup(`rg-${projectPrefix}-`);
 
 const staticApp = new web.StaticSite(`stapp-${projectPrefix}-`, {
     resourceGroupName: rg.name,
-    sku: { name: "Free", tier: "Free" },
+    sku: { name: "Standard", tier: "Standard" },
     buildProperties: {}
-    
 });
 
 const env = new containerapp.ManagedEnvironment(`env-${projectPrefix}-`, {
@@ -87,7 +87,16 @@ export const staticWebAppDeploymentToken = staticWebAppSecrets.apply(secrets =>
     secrets.properties ? secrets.properties["apiKey"] : undefined
 );
 
+const staticSiteLinkedBackend = new azure_native.web.StaticSiteLinkedBackend("staticSiteLinkedBackend", {
+    backendResourceId: backend.id,
+    linkedBackendName: "api",
+    name: staticApp.name,
+    region: staticApp.location,
+    resourceGroupName: rg.name,
+});
+
 export const staticWebUrl = staticApp.defaultHostname;
+export const staticWebAppName = staticApp.name;
 export const backendUrl = backend.latestRevisionFqdn.apply(fqdn => `https://${fqdn}`);
 export const resourceGroupName = rg.name;
 export const containerRegistryName = acr.name;
