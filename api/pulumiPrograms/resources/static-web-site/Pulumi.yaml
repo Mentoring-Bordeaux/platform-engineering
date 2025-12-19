@@ -8,7 +8,7 @@ template:
   displayName: "Create Azure Static Website"
   description: "A template for creating Azure Static Websites with Pulumi"
   config:
-    Name:
+    name:
       description: "Name of the static website / storage account"
     location:
       description: "Azure region"

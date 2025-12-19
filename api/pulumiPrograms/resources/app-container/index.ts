@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 
 const config = new pulumi.Config();
-const rawName = config.require("Name");
+const rawName = config.require("name");
 const appName = rawName.toLowerCase().replace(/[^a-z0-9-]/g, "");
 const location = config.get("location") || "westeurope";
 const containerImage = config.require("containerImage"); 

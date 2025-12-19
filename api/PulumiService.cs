@@ -20,6 +20,12 @@ public class PulumiService
             resourceType
         );
 
+        _logger.LogInformation(
+            "Looking for Pulumi program for type '{ResourceType}' at path '{WorkingDir}'",
+            resourceType,
+            workingDir
+        );
+
         if (!Directory.Exists(workingDir))
         {
             _logger.LogWarning(
