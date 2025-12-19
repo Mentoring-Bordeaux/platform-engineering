@@ -64,7 +64,7 @@ public class Program
                 List<ResultPulumiAction> results = new List<ResultPulumiAction>();
                 foreach (TemplateRequest req in request)
                 {
-                    ResultPulumiAction? actionResult = createResultForInputError(req);
+                    ResultPulumiAction? actionResult = CreateResultForInputError(req);
 
                     if (actionResult != null)
                     {
@@ -88,7 +88,7 @@ public class Program
 
                     IResult result = await pulumiService.ExecuteAsync(req);
 
-                    actionResult = processResult(result, req.Name, req.ResourceType, logger);
+                    actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
 
                     if (actionResult.StatusCode >= 400)
                     {
