@@ -104,7 +104,7 @@ public class Program
         app.Run();
     }
 
-    private static ResultPulumiAction? createResultForInputError(TemplateRequest request)
+    private static ResultPulumiAction? CreateResultForInputError(TemplateRequest request)
     {
         if (request == null)
         {
@@ -143,7 +143,7 @@ public class Program
         return null;
     }
 
-    private static ResultPulumiAction processResult(
+    private static ResultPulumiAction ProcessResult(
         IResult result,
         string name,
         string resourceType,
