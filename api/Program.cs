@@ -53,9 +53,6 @@ public class Program
 
         app.UseHttpsRedirection();
 
-        // Déplacez les définitions de classes/méthodes avant l'utilisation des endpoints si possible
-        // ou maintenez-les dans la classe Program comme ci-dessous.
-
         app.MapPost(
             "/create-project",
             async (
@@ -91,7 +88,7 @@ public class Program
 
                     IResult result = await pulumiService.ExecuteAsync(req);
 
-                    actionResult = treatResult(result, req.Name, req.ResourceType, logger);
+                    actionResult = processResult(result, req.Name, req.ResourceType, logger);
 
                     if (actionResult.StatusCode >= 400)
                     {
@@ -138,7 +135,7 @@ public class Program
                 Name = request.Name,
                 ResourceType = "NotSpecified",
                 StatusCode = 400,
-                Message = "Missing 'type' parameter",
+                Message = "Missing 'resourceType' parameter",
             };
         }
 
@@ -146,7 +143,7 @@ public class Program
         return null;
     }
 
-    private static ResultPulumiAction treatResult(
+    private static ResultPulumiAction processResult(
         IResult result,
         string name,
         string resourceType,
@@ -155,7 +152,11 @@ public class Program
     {
         if (result is JsonHttpResult<Dictionary<string, object>> jsonResult)
         {
-            Console.WriteLine("Resource created successfully of resource type: " + resourceType);   
+            log.LogInformation(
+                "Resource created successfully: {Name} of {ResourceType}",
+                name,
+                resourceType
+            );
             return new ResultPulumiAction
             {
                 Name = name,

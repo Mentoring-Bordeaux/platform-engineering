@@ -4,7 +4,7 @@ import * as azure from "@pulumi/azure-native";
 
 const config = new pulumi.Config();
 const location = config.get("location") || "westeurope";
-const appName = config.require("appName"); 
+const appName = config.require("name"); 
 const skuName = config.require("sku");
 const runtimeStack = config.require("runtimeStack"); 
 
