@@ -225,8 +225,7 @@ async function onSubmit() {
 
   listRessources.push({
     name: state.value.platform.name,
-    resourceType:
-      'platforms//' + formatResourceType(state.value.platform.type),
+    resourceType: 'platforms//' + formatResourceType(state.value.platform.type),
     parameters: Object.fromEntries(
       Object.entries(state.value.platform.config).map(([key, value]) => [
         key,

@@ -5,7 +5,7 @@ import type { Resource } from '~/types'
  */
 export const RESOURCES = {
   swa: {
-    resourceType: 'Static Web App',
+    type: 'Static Web App',
     icon: 'devicon:azure',
     config: {
       framework: {
@@ -33,7 +33,7 @@ export const RESOURCES = {
     }
   },
   'azure-app-service': {
-    resourceType: 'Azure App Service',
+    type: 'Azure App Service',
     icon: 'devicon:azure',
     config: {
       description: {
@@ -45,7 +45,7 @@ export const RESOURCES = {
     }
   },
   'azure-cosmosdb': {
-    resourceType: 'Azure Cosmos DB',
+    type: 'Azure Cosmos DB',
     icon: 'devicon:azure',
     config: {
       description: {
@@ -57,7 +57,7 @@ export const RESOURCES = {
     }
   },
   'aws-lambda': {
-    resourceType: 'AWS Lambda',
+    type: 'AWS Lambda',
     icon: 'devicon:amazonwebservices',
     config: {
       description: {

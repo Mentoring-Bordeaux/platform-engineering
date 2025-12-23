@@ -1,14 +1,5 @@
-using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using OneOf.Types;
 using Scalar.AspNetCore;
 
 public class Program
@@ -17,7 +8,10 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        string nuxtAppUrl = builder.Configuration["NuxtAppUrl"] ?? "http://localhost:3001";
+        string nuxtAppUrl =
+            builder.Configuration["services:app:http:0"]
+            ?? builder.Configuration["NuxtAppUrl"]
+            ?? "http://localhost:3000";
 
         // Configure CORS
         builder.Services.AddCors(options =>
@@ -26,7 +20,16 @@ public class Program
                 "NuxtPolicy",
                 policy =>
                 {
-                    policy.WithOrigins(nuxtAppUrl).AllowAnyHeader().AllowAnyMethod();
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        // In development, allow any origin for convenience during local testing
+                        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+                    }
+                    else
+                    {
+                        // In production, strictly allow only the configured Nuxt app origin
+                        policy.WithOrigins(nuxtAppUrl).AllowAnyHeader().AllowAnyMethod();
+                    }
                 }
             );
         });

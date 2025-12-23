@@ -84,7 +84,7 @@
             v-for="(platform, key) in PLATFORMS"
             :key="key"
             :icon="platform.icon"
-            :title="platform.platformType"
+            :title="platform.type"
             :is-selected="state.platform === key"
             @select="onPlatformSelect(key)"
           />

@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -12,10 +11,23 @@
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+    <PackageReference
+      Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets"
+      Version="1.22.1"
+    />
     <PackageReference Include="Pulumi.Automation" Version="3.91.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.11.1" />
-
   </ItemGroup>
 
+  <!-- Copy all Pulumi program files to output directory -->
+  <ItemGroup>
+    <None Include="pulumiPrograms\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Exclude pulumiPrograms from default Content items -->
+  <ItemGroup>
+    <Content Remove="pulumiPrograms\**\*" />
+  </ItemGroup>
 </Project>

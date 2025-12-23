@@ -6,9 +6,13 @@ public class PulumiService
 {
     private readonly ILogger<PulumiService> _logger;
 
-    public PulumiService(ILogger<PulumiService> logger)
+    private readonly IHostEnvironment _environment;
+
+
+    public PulumiService(ILogger<PulumiService> logger, IHostEnvironment environment)
     {
         _logger = logger;
+        _environment = environment;
     }
 
     public async Task<IResult> ExecuteAsync(TemplateRequest request)
@@ -51,7 +55,13 @@ public class PulumiService
                 new LocalProgramArgs(stackName, workingDir)
             );
 
-            await stack.SetConfigAsync("Name", new ConfigValue(request.Name));
+            // Install Pulumi dependencies (required for TypeScript programs)
+            if (_environment.IsDevelopment())
+            {
+                await stack.Workspace.InstallAsync();
+            }
+
+            await stack.SetConfigAsync("name", new ConfigValue(request.Name));
 
             // Configurate the stack with parameters from the request (excluding "type")
             foreach (var kv in request.Parameters.Where(kv => kv.Key != "type"))
