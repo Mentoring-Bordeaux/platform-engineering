@@ -51,60 +51,44 @@ public class Program
             app.MapScalarApiReference();
         }
 
-        app.UseHttpsRedirection();
+        app.UseHttpsRedirection();        
+       app.MapPost("/create-project", async (
+            ProjectRequest projectRequest,          
+            PulumiService pulumiService,
+            ILogger<Program> logger) =>
+        {
+            if (string.IsNullOrWhiteSpace(projectRequest.ProjectName))
+                return Results.BadRequest("ProjectName is required.");
 
-        app.MapPost(
-            "/create-project",
-            async (
-                TemplateRequest[] request,
-                PulumiService pulumiService,
-                ILogger<Program> logger
-            ) =>
+            if (projectRequest.Resources == null || projectRequest.Resources.Length == 0)
+                return Results.BadRequest("No resources specified.");
+            string githubToken = app.Configuration["GitHubToken"] ?? "";
+            string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
+
+            foreach (var req in projectRequest.Resources)
             {
-                List<ResultPulumiAction> results = new List<ResultPulumiAction>();
-                foreach (TemplateRequest req in request)
-                {
-                    ResultPulumiAction? actionResult = CreateResultForInputError(req);
-
-                    if (actionResult != null)
-                    {
-                        results.Add(actionResult);
-                        return Results.BadRequest(results);
-                    }
-
-                    // Inject GitHub credentials from configuration if available for all pulumi actions (generalization purpose)
-                    string githubToken = app.Configuration["GitHubToken"] ?? "";
-                    string githubOrganizationName =
-                        app.Configuration["GitHubOrganizationName"] ?? "";
-                    req.Parameters ??= new Dictionary<string, string>();
-                    if (!string.IsNullOrEmpty(githubToken))
-                    {
-                        req.Parameters["githubToken"] = githubToken;
-                    }
-                    if (!string.IsNullOrEmpty(githubOrganizationName))
-                    {
-                        req.Parameters["githubOrganizationName"] = githubOrganizationName;
-                    }
-
-                    IResult result = await pulumiService.ExecuteAsync(req);
-
-                    actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
-
-                    if (actionResult.StatusCode >= 400)
-                    {
-                        return Results.Json(actionResult, statusCode: actionResult.StatusCode);
-                    }
-                    results.Add(actionResult);
-                }
-
-                return Results.Ok(results);
+                req.Parameters ??= new Dictionary<string, string>();
+                if (!string.IsNullOrEmpty(githubToken))
+                    req.Parameters["githubToken"] = githubToken;
+                if (!string.IsNullOrEmpty(githubOrganizationName))
+                    req.Parameters["githubOrganizationName"] = githubOrganizationName;
             }
-        );
 
+            var results = await pulumiService.ExecuteProjectAsync(
+                projectRequest.ProjectName,
+                projectRequest.Resources.ToList()
+            );
+            if (results.Any(r => r.StatusCode >= 400))
+            {
+                return Results.Json(results, statusCode: results.Max(r => r.StatusCode));
+            }
+
+            return Results.Ok(results);
+        });
         app.Run();
     }
 
-    private static ResultPulumiAction? CreateResultForInputError(TemplateRequest request)
+    private static ResultPulumiAction? createResultForInputError(TemplateRequest request)
     {
         if (request == null)
         {

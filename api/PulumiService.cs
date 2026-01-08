@@ -1,6 +1,6 @@
-using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using Pulumi.Automation;
+using Microsoft.Extensions.Logging;
 
 public class PulumiService
 {
@@ -11,66 +11,83 @@ public class PulumiService
         _logger = logger;
     }
 
-    public async Task<IResult> ExecuteAsync(TemplateRequest request)
+    public async Task<List<ResultPulumiAction>> ExecuteProjectAsync(
+        string projectName,
+        List<TemplateRequest> requests)
     {
-        string resourceType = request.ResourceType;
-        var workingDir = Path.Combine(
+        List<ResultPulumiAction> results = new();
+
+        string workingDirRoot = Path.Combine(
             Directory.GetCurrentDirectory(),
             "pulumiPrograms",
-            resourceType
+            "project"
         );
 
-        _logger.LogInformation(
-            "Looking for Pulumi program for type '{ResourceType}' at path '{WorkingDir}'",
-            resourceType,
-            workingDir
+        string stackName = projectName.ToLower().Replace(" ", "-");
+
+        var stack = await LocalWorkspace.CreateOrSelectStackAsync(
+            new LocalProgramArgs(stackName, workingDirRoot)
         );
 
-        if (!Directory.Exists(workingDir))
+        _logger.LogInformation("Using stack: {StackName}", stackName);
+
+        await stack.SetConfigAsync("projectName", new ConfigValue(projectName));
+
+        var resourcesConfig = requests.Select(r => new
         {
-            _logger.LogWarning(
-                "Pulumi program not found for type '{ResourceType}' at path '{WorkingDir}'",
-                resourceType,
-                workingDir
-            );
-            return Results.BadRequest(
-                $"Pulumi program not found for type '{resourceType}' at path '{workingDir}'."
-            );
-        }
+            name = r.Name,
+            resourceType = r.ResourceType,
+            parameters = r.Parameters
+        }).ToList();
 
-        string requestAndType = $"{request.Name}-{resourceType}";
+        await stack.SetConfigAsync(
+            "resources",
+            new ConfigValue(JsonSerializer.Serialize(resourcesConfig))
+        );
 
-        string stackName = Regex.Replace(requestAndType.ToLower(), @"[^a-z0-9\-]", "-");
+        string rgName = $"{projectName}-rg";
+        await stack.SetConfigAsync("resourceGroupName", new ConfigValue(rgName));
 
-        _logger.LogInformation("Using stack name: {StackName}", stackName);
-
-        WorkspaceStack? stack = null;
         try
         {
-            stack = await LocalWorkspace.CreateOrSelectStackAsync(
-                new LocalProgramArgs(stackName, workingDir)
+            
+            var upResult = await stack.UpAsync(new UpOptions
+            {
+                OnStandardOutput = Console.WriteLine,
+                OnStandardError = Console.Error.WriteLine
+            });
+
+            var outputs = upResult.Outputs.ToDictionary(
+                kv => kv.Key,
+                kv => kv.Value?.Value
             );
 
-            await stack.SetConfigAsync("Name", new ConfigValue(request.Name));
-
-            // Configurate the stack with parameters from the request (excluding "type")
-            foreach (var kv in request.Parameters.Where(kv => kv.Key != "type"))
-                await stack.SetConfigAsync(kv.Key, new ConfigValue(kv.Value));
-
-            var result = await stack.UpAsync(
-                new UpOptions
+            foreach (var req in requests)
+            {
+                results.Add(new ResultPulumiAction
                 {
-                    OnStandardOutput = Console.WriteLine,
-                    OnStandardError = Console.Error.WriteLine,
-                }
-            );
-
-            var outputs = result.Outputs.ToDictionary(kv => kv.Key, kv => kv.Value?.Value);
-            return Results.Json(outputs);
+                    Name = req.Name,
+                    ResourceType = req.ResourceType,
+                    StatusCode = 200,
+                    Message = "Resources created successfully",
+                    Outputs = outputs
+                });
+            }
         }
         catch (Exception ex)
         {
-            return Results.Problem(ex.Message, statusCode: 500);
+            foreach (var req in requests)
+            {
+                results.Add(new ResultPulumiAction
+                {
+                    Name = req.Name,
+                    ResourceType = req.ResourceType,
+                    StatusCode = 500,
+                    Message = ex.Message
+                });
+            }
         }
+
+        return results;
     }
 }

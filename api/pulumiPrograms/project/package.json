@@ -1,0 +1,15 @@
+{
+    "name": "project",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/archiver": "^7.0.0",
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "@pulumi/azure-native": "^3.12.0",
+        "@pulumi/github": "^6.9.1",
+        "@pulumi/pulumi": "^3.113.0",
+        "archiver": "^7.0.1"
+    }
+}
