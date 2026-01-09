@@ -1,0 +1,22 @@
+template:
+  displayName: "Create App Service"
+  description: "A template for creating an Azure App Service (Linux) with Pulumi"
+  config:
+    appName:
+      description: "Name of the App Service to create"
+      default: "my-app-service"
+    resourceGroupName:
+      description: "Existing Resource Group name to host the App Service"
+      default: ""
+    sku:
+      description: "SKU name for the App Service Plan (e.g., B1, S1)"
+      default: "B1"
+    runtimeStack:
+      description: "Runtime stack to use (DOTNET, NODE, or PYTHON)"
+      default: "NODE"
+    location:
+      description: "Azure location/region for the resources"
+      default: "westeurope"
+  metadata:
+    category: "app-services"
+    framework: "azure"

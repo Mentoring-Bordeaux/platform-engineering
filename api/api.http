@@ -1,37 +1,52 @@
 @api_HostAddress = http://localhost:5064
 
-POST {{api_HostAddress}}/create-repo
+POST {{api_HostAddress}}/create-project
 Content-Type: application/json
 Accept: application/json
 
 {
-    "RepoName": "new-pulumi-repo",
-    "Private": true,
-    "Description": "The description in the README of the repo", //Optionnal
-}
-
-POST {{api_HostAddress}}/create-staticweb
-Content-Type: application/json
-Accept: application/json
-
-{
-    "Name":"nomenminiscule" // NO SPECIAL CHAR OR MAJ
-}
-
-
-POST {{api_HostAddress}}/create-ressource
-Content-Type: application/json
-Accept: application/json
-
-{
-    "Name": "my-ressorce",
-    "Parameters": {
-        "type": "ressource type",
-        "parameter1": "parameter",
-        "parameter2": "parameter",
-        "parameter": "parameter"
+  "projectName": "my-sample-project",
+  "resources": [
+    {
+      "name": "my-new-repo",
+      "resourceType": "github",
+      "parameters": {
+        "githubToken": "github_pat_XXXXXXXXXXXXXXXX",
+        "orgName": "",
+        "isPrivate": "true",
+        "description": "Repository created by Pulumi"
+      }
+    },
+    {
+      "name": "my-static-site",
+      "resourceType": "static-web-app",
+      "parameters": {
+        "repositoryUrl": "https://github.com/yourorg/my-new-repo.git",
+        "branch": "main",
+        "location": "westeurope"
+      }
     }
+  ]
 }
 
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+{
+  "projectName": "single-resource-example",
+  "resources": [
+    {
+      "name": "my-app-service",
+      "resourceType": "app-service",
+      "parameters": {
+        "resourceGroupName": "my-rg",
+        "sku": "B1",
+        "runtimeStack": "NODE",
+        "location": "westeurope"
+      }
+    }
+  ]
+}
 
 ###

@@ -1,0 +1,22 @@
+template:
+  displayName: "Create Static Web App"
+  description: "Create and deploy an Azure Static Web App using a repository"
+  config:
+    name:
+      description: "Pulumi resource name for the Static Web App"
+      default: "my-static-site"
+    resourceGroupName:
+      description: "Existing Resource Group name to host the Static Web App"
+      default: ""
+    location:
+      description: "Azure region for the Static Web App"
+      default: "westeurope"
+    repositoryUrl:
+      description: "Repository URL to deploy from (optional)"
+      default: ""
+    branch:
+      description: "Git branch to use for deployment"
+      default: "main"
+  metadata:
+    category: "static-sites"
+    framework: "static-web-app"

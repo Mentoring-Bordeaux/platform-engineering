@@ -1,0 +1,22 @@
+template:
+  displayName: "Create GitHub Repository"
+  description: "A template for creating GitHub repositories with Pulumi"
+  config:
+    githubToken:
+      description: "GitHub Token with repo permissions"
+      secret: true
+    name:
+      description: "Name of the GitHub repository to create"
+      default: "my-new-repo"
+    description:
+      description: "Description of the GitHub repository (README)"
+      default: "This is my new repository created with Pulumi"
+    isPrivate:
+      description: "Whether the repository should be private"
+      default: true
+    orgName:
+      description: "GitHub Organization name (if creating under an org)"
+      default: ""
+  metadata:
+    category: "repositories"
+    framework: "github"

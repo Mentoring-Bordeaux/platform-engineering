@@ -1,94 +1,80 @@
 import * as azure from "@pulumi/azure-native";
 import * as pulumi from "@pulumi/pulumi";
-import * as child_process from "child_process";
+import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
-/**
- * Crée le code initial d'une application React TypeScript et le push sur un repo GitHub vide
- * @param repoUrl URL du repo GitHub vide
- * @param localFolder Dossier temporaire pour créer le projet localement
- * @param appName Nom de l'application / dossier du projet
- * @returns Pulumi Output<string> de l'URL du repo
- */
+
 export function createReactRepoInitial(
-    repoUrl: string,
-    localFolder: string,
-    appName: string
+  repoUrl: string,
+  tempDir: string,
+  appName: string
 ) {
-    const projectName = appName.toLowerCase().replace(/\s+/g, "-");
-    const tmpDir = path.resolve(localFolder, projectName);
+  const appPath = path.join(tempDir, appName);
 
-    pulumi.log.info(`Initialisation du projet React TS dans ${tmpDir}`);
+  console.log("Création du projet React TS dans :", appPath);
 
-    if (!fs.existsSync(tmpDir) || fs.readdirSync(tmpDir).length === 0) {
-        fs.mkdirSync(tmpDir, { recursive: true });
-        child_process.execSync(`npx create-react-app . --template typescript`, {
-            cwd: tmpDir,
-            stdio: "inherit",
-        });
-    }
-    const gitignorePath = path.join(tmpDir, ".gitignore");
-    const gitignoreContent = `
-node_modules
-build
-.env
+  if (fs.existsSync(appPath)) {
+    fs.rmSync(appPath, { recursive: true, force: true });
+  }
+
+  execSync(
+    `npx create-react-app ${appName} --template typescript`,
+    { stdio: "inherit", cwd: tempDir }
+  );
+
+ const gitignorePath = path.join(appPath, ".gitignore");
+
+  const gitignoreContent = `
+# dependencies
+/node_modules
+
+# production
+/build
+
+# misc
 .DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode
+.idea
+
+# OS
+Thumbs.db
 `;
 
-    if (!fs.existsSync(gitignorePath)) {
-        fs.writeFileSync(gitignorePath, gitignoreContent.trim() + "\n");
-    } else {
-        const existing = fs.readFileSync(gitignorePath, "utf-8");
-        if (!existing.includes("node_modules")) {
-            fs.appendFileSync(gitignorePath, "\nnode_modules\n");
-        }
-        if (!existing.includes("build")) {
-            fs.appendFileSync(gitignorePath, "\nbuild\n");
-        }
-    }
+  fs.appendFileSync(gitignorePath, "\n" + gitignoreContent);
 
-    if (!fs.existsSync(path.join(tmpDir, ".git"))) {
-        child_process.execSync(`git init`, { cwd: tmpDir, stdio: "inherit" });
-        child_process.execSync(`git branch -M main`, { cwd: tmpDir, stdio: "inherit" });
-        child_process.execSync(`git remote add origin ${repoUrl}`, { cwd: tmpDir, stdio: "inherit" });
-    }
+  console.log("✅ .gitignore ajouté");
 
-    try {
-        child_process.execSync(`git fetch origin main`, { cwd: tmpDir, stdio: "inherit" });
-        child_process.execSync(`git reset --hard origin/main`, { cwd: tmpDir, stdio: "inherit" });
-        pulumi.log.info("Repos distant intégré avec succès.");
-    } catch {
-        pulumi.log.info("Repo distant vide ou inexistant.");
-    }
+  
+  execSync("git init", { cwd: appPath });
+  execSync("git branch -M main", { cwd: appPath });
 
-    child_process.execSync(`git add .`, { cwd: tmpDir, stdio: "inherit" });
-    try {
-        child_process.execSync(`git commit -m "Initial commit React TS"` , {
-            cwd: tmpDir,
-            stdio: "inherit",
-        });
-    } catch {
-        pulumi.log.info("Aucun changement à committer.");
-    }
+  execSync(`git remote add origin ${repoUrl}`, { cwd: appPath });
 
-    child_process.execSync(`git push -u origin main --force`, {
-        cwd: tmpDir,
-        stdio: "inherit",
-    });
+  execSync("git add .", { cwd: appPath });
+  execSync('git commit -m "Initial commit React TS"', { cwd: appPath });
 
-    pulumi.log.info(`✅ Projet React TS pushé sur ${repoUrl} (sans node_modules)`);
+  execSync("git push -u origin main --force", {
+    cwd: appPath,
+    stdio: "inherit",
+  });
+
+  console.log("✅ Repo React TS pushé vers GitHub avec succès");
 }
 
 
-/**
- * Déploie la Static Web App Azure à partir d'un repo GitHub
- * @param name Nom de l'application Azure
- * @param resourceGroupName Nom du Resource Group
- * @param location Région Azure
- * @param repositoryUrl URL du repo GitHub
- * @param branch Branche du repo (default: main)
- */
 export function deployStaticWebAppFromRepo(
     name: string,
     resourceGroupName: pulumi.Input<string>,
@@ -103,9 +89,9 @@ export function deployStaticWebAppFromRepo(
         repositoryUrl,
         branch,
         buildProperties: {
-            appLocation: "/",                
-            apiLocation: "",                 
-            appArtifactLocation: "build",  
+            appLocation: "/",
+            apiLocation: "",
+            appArtifactLocation: "build",
             appBuildCommand: "npm run build",
         },
     });

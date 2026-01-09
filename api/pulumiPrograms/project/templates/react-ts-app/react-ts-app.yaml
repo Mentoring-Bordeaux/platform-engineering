@@ -1,0 +1,25 @@
+template:
+  displayName: "Create React TypeScript App and Deploy Static Web App"
+  description: "Initialise a React TypeScript repository and deploy it as an Azure Static Web App using Pulumi"
+  config:
+    repoUrl:
+      description: "Git repository URL to push the initial React app to (e.g., https://github.com/org/repo.git)"
+      default: ""
+    appName:
+      description: "Name of the React application (and local folder created by create-react-app)"
+      default: "my-react-app"
+    staticSiteName:
+      description: "Pulumi resource name for the Azure Static Web App"
+      default: "my-static-site"
+    resourceGroupName:
+      description: "Existing Resource Group name to host the Static Web App"
+      default: ""
+    location:
+      description: "Azure region for the Static Web App"
+      default: "westeurope"
+    branch:
+      description: "Git branch to use for the static site deployment"
+      default: "main"
+  metadata:
+    category: "static-sites"
+    framework: "react"

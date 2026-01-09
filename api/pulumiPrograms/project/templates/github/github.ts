@@ -1,15 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as github from "@pulumi/github";
 
-/**
- * Crée un dépôt GitHub en utilisant le token et l'organisation configurés.
- * @param name Le nom du dépôt
- * @param isPrivate True si le dépôt doit être privé
- * @param description Description du dépôt (optionnel)
- * @param orgName Nom de l'organisation GitHub (optionnel)
- * @param githubToken Token GitHub PAT (obligatoire)
- * @returns L'objet Repository et l'URL du dépôt
- */
 export function createGithubRepo(
     name: string,
     isPrivate: boolean,
@@ -32,7 +23,7 @@ export function createGithubRepo(
         hasIssues: true,
         hasProjects: true,
         hasWiki: false,
-        autoInit: true,
+        autoInit: false,
     }, {
         provider: githubProvider,
         retainOnDelete: true, 
