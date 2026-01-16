@@ -17,6 +17,7 @@
     />
     <PackageReference Include="Pulumi.Automation" Version="3.91.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.11.1" />
+    <PackageReference Include="YamlDotNet" Version="16.2.1" />
   </ItemGroup>
 
   <!-- Copy Pulumi program sources to output directory (exclude generated folders like node_modules) -->

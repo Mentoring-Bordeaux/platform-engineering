@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Scalar.AspNetCore;
+using YamlDotNet.Serialization;
 
 public class Program
 {
@@ -128,6 +129,65 @@ public class Program
         // Azure Static Web Apps proxies backend requests via the fixed /api prefix.
         app.MapPost("/create-project", createProjectHandler);
         app.MapPost("/api/create-project", createProjectHandler);
+
+        app.MapGet(
+            "/templates",
+            (ILogger<Program> logger) =>
+            {
+                var templatesDir = Path.Combine(Directory.GetCurrentDirectory(), "templates");
+
+                if (!Directory.Exists(templatesDir))
+                {
+                    logger.LogWarning(
+                        "Templates directory not found at: {TemplatesDir}",
+                        templatesDir
+                    );
+                    return Results.Ok(new List<object>());
+                }
+
+                var yamlFiles = Directory
+                    .GetFiles(templatesDir, "*.yaml")
+                    .Concat(Directory.GetFiles(templatesDir, "*.yml"))
+                    .ToList();
+
+                if (!yamlFiles.Any())
+                {
+                    logger.LogInformation(
+                        "No template files found in: {TemplatesDir}",
+                        templatesDir
+                    );
+                    return Results.Ok(new List<object>());
+                }
+
+                var templates = new List<object>();
+
+                foreach (var file in yamlFiles)
+                {
+                    try
+                    {
+                        var yamlContent = File.ReadAllText(file);
+                        var deserializer = new DeserializerBuilder().Build();
+                        var yamlObject = deserializer.Deserialize<object>(yamlContent);
+
+                        templates.Add(yamlObject);
+                        logger.LogInformation(
+                            "Successfully loaded template: {FileName}",
+                            Path.GetFileName(file)
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(
+                            ex,
+                            "Failed to parse template file: {FileName}",
+                            Path.GetFileName(file)
+                        );
+                    }
+                }
+
+                return Results.Ok(templates);
+            }
+        );
 
         app.Run();
     }
