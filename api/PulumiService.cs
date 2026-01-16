@@ -101,10 +101,31 @@ public class PulumiService
 
             var pulumiProjectName = TryGetPulumiProjectName(workingDir);
 
-           
-            // Passing a pre-qualified key here can result in the required key not being set.
-            static string QualifyConfigKey(string key) => key;
+            string QualifyConfigKey(string key)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    return key;
+                }
 
+                // Already-qualified keys (e.g. aws:region) or Pulumi internal keys.
+                if (key.StartsWith("pulumi:", StringComparison.OrdinalIgnoreCase) || key.Contains(':'))
+                {
+                    return key;
+                }
+
+                // User config keys must be namespaced as "<project>:<key>".
+                if (!string.IsNullOrWhiteSpace(pulumiProjectName))
+                {
+                    return $"{pulumiProjectName}:{key}";
+                }
+
+                return key;
+            }
+
+            // GitHub template requires `name`; GitLab template requires `Name`.
+            // Setting both is safe and avoids template-specific branching.
+            await stack.SetConfigAsync(QualifyConfigKey("name"), new ConfigValue(request.Name));
             await stack.SetConfigAsync(QualifyConfigKey("Name"), new ConfigValue(request.Name));
 
             // Remove stale config keys from previous runs when they are not provided anymore.
@@ -113,6 +134,7 @@ public class PulumiService
             var desiredKeys = request.Parameters.Keys
                 .Where(k => k != "type")
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            desiredKeys.Add("name");
             desiredKeys.Add("Name");
 
             var existingConfig = await stack.GetAllConfigAsync();
@@ -195,6 +217,7 @@ public class PulumiService
             return null;
         }
     }
+
 
     private static async Task<CommandResult> RunCommandAsync(
         string fileName,
