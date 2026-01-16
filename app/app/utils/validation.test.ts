@@ -6,6 +6,7 @@ import {
   generateProjectConfigurationSchema
 } from './validation'
 import type { ProjectOptions } from '~/config/project-options'
+import type { Platform, Resource } from '~/types'
 
 describe('Validation Schema', () => {
   describe('generateFieldSchema', () => {
@@ -78,8 +79,8 @@ describe('Validation Schema', () => {
   describe('Resource Configuration Schema', () => {
     it('should generate valid schema for any resource', () => {
       // Test that schema generation works for any resource
-      const resource = {
-        name: 'Test Resource',
+      const resource: Resource = {
+        type: 'Test Resource',
         icon: 'test-icon',
         config: {
           testField: {
@@ -93,7 +94,7 @@ describe('Validation Schema', () => {
       const schema = generateResourceConfigSchema(resource)
 
       const validConfig = {
-        name: resource.name,
+        name: 'Config Name',
         config: {
           testField: 'valid value'
         }
@@ -101,7 +102,7 @@ describe('Validation Schema', () => {
       expect(() => schema.parse(validConfig)).not.toThrow()
 
       const invalidConfig = {
-        name: resource.name,
+        name: 'Config Name',
         config: {
           testField: '' // Empty required field
         }
@@ -113,8 +114,8 @@ describe('Validation Schema', () => {
   describe('Platform Configuration Schema', () => {
     it('should generate valid schema for any platform', () => {
       // Test that schema generation works for any platform
-      const platform = {
-        name: 'Test Platform',
+      const platform: Platform = {
+        type: 'test-platform',
         icon: 'test-icon',
         config: {
           requiredField: {
@@ -134,7 +135,7 @@ describe('Validation Schema', () => {
       const schema = generatePlatformConfigSchema(platform)
 
       const validConfig = {
-        name: platform.name,
+        name: platform.type,
         config: {
           requiredField: 'valid value',
           optionalField: 'optional value'
@@ -143,7 +144,7 @@ describe('Validation Schema', () => {
       expect(() => schema.parse(validConfig)).not.toThrow()
 
       const invalidConfig = {
-        name: platform.name,
+        name: platform.type,
         config: {
           requiredField: '', // Empty required field
           optionalField: 'optional value'
@@ -157,6 +158,7 @@ describe('Validation Schema', () => {
     it('should match state shape for any project configuration', () => {
       // Create a generic project with mock resources and platform
       const mockResource1 = {
+        type: 'resource-1',
         name: 'Resource 1',
         icon: 'icon1',
         config: {
@@ -170,6 +172,7 @@ describe('Validation Schema', () => {
       }
 
       const mockResource2 = {
+        type: 'resource-2',
         name: 'Resource 2',
         icon: 'icon2',
         config: {
@@ -183,8 +186,8 @@ describe('Validation Schema', () => {
         }
       }
 
-      const mockPlatform = {
-        name: 'Test Platform',
+      const mockPlatform: Platform = {
+        type: 'test-platform',
         icon: 'platform-icon',
         config: {
           platformField: {
@@ -233,8 +236,8 @@ describe('Validation Schema', () => {
     })
 
     it('should reject invalid configurations', () => {
-      const mockResource = {
-        name: 'Resource',
+      const mockResource: Resource = {
+        type: 'test-resource',
         icon: 'icon',
         config: {
           requiredField: {
@@ -246,8 +249,8 @@ describe('Validation Schema', () => {
         }
       }
 
-      const mockPlatform = {
-        name: 'Platform',
+      const mockPlatform: Platform = {
+        type: 'test-platform',
         icon: 'icon',
         config: {
           requiredPlatformField: {
@@ -319,8 +322,8 @@ describe('Validation Schema', () => {
     })
 
     it('should provide correct error paths for field validation', () => {
-      const mockResource = {
-        name: 'Resource',
+      const mockResource: Platform = {
+        type: 'resource',
         icon: 'icon',
         config: {
           testField: {
@@ -332,8 +335,8 @@ describe('Validation Schema', () => {
         }
       }
 
-      const mockPlatform = {
-        name: 'Platform',
+      const mockPlatform: Platform = {
+        type: 'platform',
         icon: 'icon',
         config: {
           platformField: {
@@ -386,8 +389,8 @@ describe('Validation Schema', () => {
   describe('Type Compatibility', () => {
     it('should accept array state for tuple schema at runtime', () => {
       // Create mock resources with different config shapes
-      const mockResource1 = {
-        name: 'Resource 1',
+      const mockResource1: Resource = {
+        type: 'resource-1',
         icon: 'icon1',
         config: {
           field1: {
@@ -399,8 +402,8 @@ describe('Validation Schema', () => {
         }
       }
 
-      const mockResource2 = {
-        name: 'Resource 2',
+      const mockResource2: Resource = {
+        type: 'resource-2',
         icon: 'icon2',
         config: {
           field1: {
@@ -421,8 +424,8 @@ describe('Validation Schema', () => {
         }
       }
 
-      const mockPlatform = {
-        name: 'Platform',
+      const mockPlatform: Platform = {
+        type: 'platform',
         icon: 'icon',
         config: {
           platformField: {
@@ -481,8 +484,8 @@ describe('Validation Schema', () => {
 
     it('should reject array state with invalid data at runtime', () => {
       // Create mock resources with validation constraints
-      const mockResource1 = {
-        name: 'Resource 1',
+      const mockResource1: Resource = {
+        type: 'resource-1',
         icon: 'icon1',
         config: {
           field1: {
@@ -494,8 +497,8 @@ describe('Validation Schema', () => {
         }
       }
 
-      const mockResource2 = {
-        name: 'Resource 2',
+      const mockResource2: Resource = {
+        type: 'resource-2',
         icon: 'icon2',
         config: {
           field1: {
@@ -516,8 +519,8 @@ describe('Validation Schema', () => {
         }
       }
 
-      const mockPlatform = {
-        name: 'Platform',
+      const mockPlatform: Platform = {
+        type: 'platform',
         icon: 'icon',
         config: {
           platformField: {
