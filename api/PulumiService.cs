@@ -90,6 +90,12 @@ public class PulumiService
                 new LocalProgramArgs(stackName, workingDir)
             );
 
+            // Install Pulumi dependencies (required for TypeScript programs)
+            if (_environment.IsDevelopment())
+            {
+                await stack.Workspace.InstallAsync();
+            }
+
             var pulumiProjectName = TryGetPulumiProjectName(workingDir);
 
             string QualifyConfigKey(string key)
@@ -112,7 +118,7 @@ public class PulumiService
                 return $"{pulumiProjectName}:{key}";
             }
 
-            await stack.SetConfigAsync(QualifyConfigKey("Name"), new ConfigValue(request.Name));
+            await stack.SetConfigAsync(QualifyConfigKey("name"), new ConfigValue(request.Name));
 
             // Remove stale config keys from previous runs when they are not provided anymore.
             // Pulumi stack config persists across updates, so an old value (e.g. an invalid gitlabBaseUrl)
