@@ -101,27 +101,11 @@ public class PulumiService
 
             var pulumiProjectName = TryGetPulumiProjectName(workingDir);
 
-            string QualifyConfigKey(string key)
-            {
-                if (string.IsNullOrWhiteSpace(key))
-                {
-                    return key;
-                }
+           
+            // Passing a pre-qualified key here can result in the required key not being set.
+            static string QualifyConfigKey(string key) => key;
 
-                if (key.StartsWith("pulumi:", StringComparison.OrdinalIgnoreCase) || key.Contains(':'))
-                {
-                    return key;
-                }
-
-                if (string.IsNullOrWhiteSpace(pulumiProjectName))
-                {
-                    return key;
-                }
-
-                return $"{pulumiProjectName}:{key}";
-            }
-
-            await stack.SetConfigAsync(QualifyConfigKey("name"), new ConfigValue(request.Name));
+            await stack.SetConfigAsync(QualifyConfigKey("Name"), new ConfigValue(request.Name));
 
             // Remove stale config keys from previous runs when they are not provided anymore.
             // Pulumi stack config persists across updates, so an old value (e.g. an invalid gitlabBaseUrl)
