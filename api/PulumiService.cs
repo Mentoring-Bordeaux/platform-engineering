@@ -8,9 +8,12 @@ public class PulumiService
 {
     private readonly ILogger<PulumiService> _logger;
 
-    public PulumiService(ILogger<PulumiService> logger)
+    private readonly IWebHostEnvironment _environment;
+
+    public PulumiService(ILogger<PulumiService> logger, IWebHostEnvironment environment)
     {
         _logger = logger;
+        _environment = environment;
     }
 
     public async Task<IResult> ExecuteAsync(TemplateRequest request)
