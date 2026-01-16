@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install Pulumi CLI and Node.js (runtime requirements)
 USER root
-RUN apt-get update && apt-get install -y curl \
+RUN apt-get update && apt-get install -y curl ca-certificates \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean
@@ -21,9 +21,6 @@ RUN cp /root/.pulumi/bin/pulumi /usr/local/bin/pulumi
 ENV PULUMI_HOME=/app/.pulumi
 ENV HOME=/app
 RUN mkdir -p /app/.pulumi && chown -R ${APP_UID}:0 /app/.pulumi
-
-# Preinstall the NodeJS language plugin (TypeScript Pulumi programs need it).
-RUN pulumi plugin install language nodejs
 
 # Ensure app user can write under /app (Pulumi writes stack files there)
 RUN chown -R ${APP_UID}:0 /app
