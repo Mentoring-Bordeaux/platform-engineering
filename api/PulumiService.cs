@@ -18,21 +18,6 @@ public class PulumiService
         return Path.Combine(Directory.GetCurrentDirectory(), ".pulumi");
     }
 
-    private static bool HasNodejsLanguagePlugin(string pulumiHome)
-    {
-        var pluginDir = Path.Combine(pulumiHome, "plugins");
-        if (!Directory.Exists(pluginDir))
-        {
-            return false;
-        }
-
-        // Pulumi typically stores the language plugin under a directory like:
-        //   <PULUMI_HOME>/plugins/language-nodejs-vX.Y.Z/
-        // but we keep checks loose to be resilient across versions.
-        return Directory.EnumerateDirectories(pluginDir, "language-nodejs*", SearchOption.TopDirectoryOnly).Any()
-            || Directory.EnumerateDirectories(pluginDir, "pulumi-language-nodejs*", SearchOption.TopDirectoryOnly).Any();
-    }
-
     public PulumiService(ILogger<PulumiService> logger, IWebHostEnvironment environment)
     {
         _logger = logger;
@@ -97,38 +82,6 @@ public class PulumiService
             var nodeModulesPath = Path.Combine(workingDir, "node_modules");
             if (!Directory.Exists(nodeModulesPath))
             {
-                // Ensure the NodeJS language plugin exists before running `pulumi install`.
-                // Unlike resource provider plugins, the language host isn't always auto-downloaded.
-                if (!HasNodejsLanguagePlugin(pulumiHome))
-                {
-                    _logger.LogInformation(
-                        "Pulumi NodeJS language plugin not found. Installing 'pulumi-language-nodejs' into {PulumiHome}.",
-                        pulumiHome
-                    );
-
-                    var pluginResult = await RunCommandAsync(
-                        "pulumi",
-                        "plugin install language nodejs",
-                        workingDir
-                    );
-
-                    if (pluginResult.ExitCode != 0)
-                    {
-                        _logger.LogError(
-                            "Pulumi plugin install failed (exit {ExitCode}). stderr: {Stderr}",
-                            pluginResult.ExitCode,
-                            pluginResult.StandardError
-                        );
-
-                        return Results.Problem(
-                            detail:
-                                "Pulumi plugin install failed. Ensure the container can reach Pulumi plugin downloads and that PULUMI_HOME is writable.\n"
-                                + pluginResult.StandardError,
-                            statusCode: 500
-                        );
-                    }
-                }
-
                 _logger.LogInformation(
                     "node_modules not found for '{ResourceType}'. Running `pulumi install` in '{WorkingDir}'.",
                     resourceType,
@@ -146,7 +99,7 @@ public class PulumiService
                     return Results.Problem(
                         detail:
                             "Pulumi dependencies install failed. Ensure Pulumi CLI is installed, and the selected packagemanager (pnpm/npm) is available.\n"
-                            + "If you see 'no language plugin pulumi-language-nodejs', install it via `pulumi plugin install language nodejs`.\n"
+                            + "If you see 'no language plugin pulumi-language-nodejs', ensure the bundled language host binary (pulumi-language-nodejs) is available on PATH (typically by installing Pulumi correctly inside the container/image).\n"
                             + installResult.StandardError,
                         statusCode: 500
                     );

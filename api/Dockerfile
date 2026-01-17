@@ -13,8 +13,13 @@ RUN apt-get update && apt-get install -y curl ca-certificates \
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 RUN curl -fsSL https://get.pulumi.com | sh
-ENV PATH="/root/.pulumi/bin:${PATH}"
-RUN cp /root/.pulumi/bin/pulumi /usr/local/bin/pulumi
+ENV PATH="/usr/local/bin:${PATH}"
+
+# The install script places Pulumi and bundled language hosts under /root/.pulumi/bin.
+# Copy them to a non-root-accessible location so the runtime user can execute
+# pulumi-language-nodejs (required for TypeScript Pulumi programs).
+RUN cp /root/.pulumi/bin/pulumi* /usr/local/bin/ \
+    && chmod 755 /usr/local/bin/pulumi*
 
 # Use a writable Pulumi home for the non-root runtime user.
 # This is required so Pulumi can install/find plugins like pulumi-language-nodejs.
