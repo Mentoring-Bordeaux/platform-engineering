@@ -66,4 +66,10 @@ COPY --from=build /src/pulumiPrograms /app/pulumiPrograms
 # node_modules must be inside /app/pulumiPrograms for `pulumi install` / runtime
 COPY --from=deps /pulumiPrograms/node_modules /app/pulumiPrograms/node_modules
 
+# COPY runs as root and produces root-owned files; fix ownership so the runtime
+# non-root user can write temp files (pnpm creates _tmp_* files in the project dir).
+USER root
+RUN chown -R ${APP_UID}:0 /app/pulumiPrograms
+USER ${APP_UID}
+
 ENTRYPOINT ["dotnet", "api.dll"]
