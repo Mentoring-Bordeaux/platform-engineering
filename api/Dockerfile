@@ -34,11 +34,19 @@ USER $APP_UID
 ENV ASPNETCORE_HTTP_PORTS=5064
 EXPOSE 5064
 
-# Install packages for Pulumi programs
+
+# Install packages for Pulumi programs (root and github subproject)
 FROM node:lts-alpine AS deps
 WORKDIR /pulumiPrograms
 RUN corepack enable
+
+# Install root pulumiPrograms dependencies
 COPY ./pulumiPrograms/package.json ./pulumiPrograms/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Install github subproject dependencies
+WORKDIR /pulumiPrograms/platforms/github
+COPY ./pulumiPrograms/platforms/github/package.json ./pulumiPrograms/platforms/github/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Build Stage
@@ -63,8 +71,10 @@ COPY --from=publish /app/publish .
 # Pulumi programs where PulumiService expects them
 COPY --from=build /src/pulumiPrograms /app/pulumiPrograms
 
-# node_modules must be inside /app/pulumiPrograms for `pulumi install` / runtime
+
+# node_modules must be inside /app/pulumiPrograms and /app/pulumiPrograms/platforms/github for runtime
 COPY --from=deps /pulumiPrograms/node_modules /app/pulumiPrograms/node_modules
+COPY --from=deps /pulumiPrograms/platforms/github/node_modules /app/pulumiPrograms/platforms/github/node_modules
 
 # COPY runs as root and produces root-owned files; fix ownership so the runtime
 # non-root user can write temp files (pnpm creates _tmp_* files in the project dir).
