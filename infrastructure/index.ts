@@ -68,7 +68,7 @@ const vault = new keyvault.Vault(`kv-${projectPrefix}`, {
   },
 });
 
-const kvSecretName = "PULUMI_ACCESS_TOKEN";
+const kvSecretName = "pulumi-access-token";
 
 const kvSecret = new keyvault.Secret(`kvsec-${projectPrefix}`, {
   resourceGroupName: rg.name,
@@ -129,7 +129,7 @@ const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
 
         secrets: [
         {
-          name: "PULUMI_ACCESS_TOKEN",
+          name: "pulumi-access-token",
           identity: identity.id,            // UAI utilisée pour lire Key Vault
           keyVaultUrl: kvSecretUriWithVersion, // URL du secret KV (avec version)
         },
@@ -144,6 +144,12 @@ const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
                     cpu: 0.25,
                     memory: "0.5Gi",
                 },
+                env: [
+                    {
+                    name: "PULUMI_ACCESS_TOKEN",     // ✅ variable dans le container
+                    secretRef: "pulumi-access-token" // ✅ référence le secret "safe"
+                    },
+                ],
             },
         ],
     },
