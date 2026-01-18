@@ -101,6 +101,13 @@ public class Program
 
                     IResult result = await pulumiService.ExecuteAsync(req);
 
+                    logger.LogInformation(
+                        "PulumiService executed for resource: {Name} of type {ResourceType}, result: {@Result}",
+                        req.Name,
+                        req.ResourceType,
+                        result
+                    );
+
                     actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
 
                     if (actionResult.StatusCode >= 400)
@@ -110,7 +117,24 @@ public class Program
                     results.Add(actionResult);
                 }
 
-                return Results.Ok(results);
+                // Log the results before returning
+                logger.LogInformation("Returning results from createProjectHandler: {@Results}", results);
+
+                try
+                {
+                    return Results.Ok(results);
+                }
+                catch (Exception serializationEx)
+                {
+                    logger.LogError(serializationEx, "Serialization error in createProjectHandler: {Message}", serializationEx.Message);
+                    return Results.Json(new ResultPulumiAction
+                    {
+                        Name = "",
+                        ResourceType = "",
+                        StatusCode = 500,
+                        Message = $"Serialization error: {serializationEx.Message}",
+                    }, statusCode: 500);
+                }
             }
             catch (Exception ex)
             {
