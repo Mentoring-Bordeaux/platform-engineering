@@ -6,9 +6,14 @@ import * as containerregistry from "@pulumi/azure-native/containerregistry";
 import * as managedidentity from "@pulumi/azure-native/managedidentity";
 import * as authorization from "@pulumi/azure-native/authorization";
 import * as azure_native from "@pulumi/azure-native";
-
+import * as keyvault from "@pulumi/azure-native/keyvault";
+import * as random from "@pulumi/random";
 
 const projectPrefix = "platformeng"; 
+
+const cfg = new pulumi.Config();
+const pulumiAccessToken = cfg.requireSecret("PULUMI_ACCESS_TOKEN");
+
 
 const rg = new resources.ResourceGroup(`rg-${projectPrefix}-`);
 
@@ -40,7 +45,65 @@ const roleAssignment = new authorization.RoleAssignment(`ra-acr-pull-${projectPr
   scope: rg.id,
   principalType: "ServicePrincipal", 
 });
+const client = authorization.getClientConfigOutput();
 
+const kvSuffix = new random.RandomString(`kv-sfx-${projectPrefix}`, {
+  length: 6,
+  special: false,
+  upper: false,
+}).result;
+
+// Key Vault naming: 3-24 chars, alphanum + hyphen, start with letter
+const keyVaultName = pulumi.interpolate`kv${projectPrefix}${kvSuffix}`; // ex: kvplatformengabc123
+
+const vault = new keyvault.Vault(`kv-${projectPrefix}`, {
+  resourceGroupName: rg.name,
+  location: rg.location,
+  vaultName: keyVaultName,
+  properties: {
+    tenantId: client.tenantId,
+    sku: { family: "A", name: "standard" },
+    enableRbacAuthorization: true,
+    accessPolicies: [], // RBAC => empty policies OK
+  },
+});
+
+const kvSecretName = "PULUMI_ACCESS_TOKEN";
+
+const kvSecret = new keyvault.Secret(`kvsec-${projectPrefix}`, {
+  resourceGroupName: rg.name,
+  vaultName: vault.name,
+  secretName: kvSecretName,
+  properties: {
+    value: pulumiAccessToken,
+  },
+});
+
+// Container Apps veut l'URL du secret Key Vault (avec version)
+const kvSecretInfo = keyvault.getSecretOutput(
+  {
+    resourceGroupName: rg.name,
+    vaultName: vault.name,
+    secretName: kvSecretName,
+  },
+  { dependsOn: [kvSecret] }
+);
+
+const kvSecretUriWithVersion = kvSecretInfo.properties.secretUriWithVersion;
+
+// Donner le droit à l'identité (UAI) de lire les secrets du vault (RBAC)
+const keyVaultSecretsUserRoleDefinitionId =
+  "/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6";
+
+const kvRoleAssignmentName = new random.RandomUuid(`ra-kv-guid-${projectPrefix}`).result;
+
+const roleAssignmentKvSecretsUser = new authorization.RoleAssignment(`ra-kv-secrets-${projectPrefix}`, {
+  roleAssignmentName: kvRoleAssignmentName,
+  principalId: identity.principalId,
+  roleDefinitionId: keyVaultSecretsUserRoleDefinitionId,
+  scope: vault.id,
+  principalType: "ServicePrincipal",
+});
 
 const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
     resourceGroupName: rg.name,
@@ -63,6 +126,14 @@ const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
                 identity: identity.id,
             },
         ],
+
+        secrets: [
+        {
+          name: "PULUMI_ACCESS_TOKEN",
+          identity: identity.id,            // UAI utilisée pour lire Key Vault
+          keyVaultUrl: kvSecretUriWithVersion, // URL du secret KV (avec version)
+        },
+      ],
     },
     template: {
         containers: [
@@ -102,3 +173,4 @@ export const resourceGroupName = rg.name;
 export const containerRegistryName = acr.name;
 export const containerAppName = backend.name;
 export const acrServer = acr.loginServer;
+export const keyVault = vault.name;
