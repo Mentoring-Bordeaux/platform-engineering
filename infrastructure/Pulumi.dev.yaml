@@ -1,2 +1,4 @@
 config:
   azure-native:location: westeurope
+  platform-engineering-infra:PULUMI_ACCESS_TOKEN:
+    secure: AAABALkgCeWVdBgrqaw8kC4NCYnmN5We/4by8C783JL7+tW6D+og3B54nXaLw00YqeZwDUC9nwEFUEjndhxBKNfW9+FcWz51dI2PJA==
