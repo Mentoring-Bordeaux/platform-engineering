@@ -54,7 +54,7 @@ public class Program
             app.MapScalarApiReference();
         }
 
-        app.UseHttpsRedirection();
+        // app.UseHttpsRedirection(); // Désactivé temporairement pour debug Azure
 
         var createProjectHandler = async (
             TemplateRequest[] request,
