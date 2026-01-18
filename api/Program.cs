@@ -62,53 +62,67 @@ public class Program
             ILogger<Program> logger
         ) =>
         {
-            List<ResultPulumiAction> results = new List<ResultPulumiAction>();
-            foreach (TemplateRequest req in request)
+            try
             {
-                ResultPulumiAction? actionResult = CreateResultForInputError(req);
-
-                if (actionResult != null)
+                List<ResultPulumiAction> results = new List<ResultPulumiAction>();
+                foreach (TemplateRequest req in request)
                 {
+                    ResultPulumiAction? actionResult = CreateResultForInputError(req);
+
+                    if (actionResult != null)
+                    {
+                        results.Add(actionResult);
+                        return Results.BadRequest(results);
+                    }
+
+                    // Inject GitHub credentials from configuration if available for all pulumi actions (generalization purpose)
+                    string githubToken = app.Configuration["GitHubToken"] ?? "";
+                    string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
+                    string gitlabToken = app.Configuration["GitLabToken"] ?? "";
+                    string gitlabBaseUrl = app.Configuration["GitLabBaseUrl"] ?? "";
+                    req.Parameters ??= new Dictionary<string, string>();
+
+                    if (HasRealConfigValue(githubToken))
+                    {
+                        req.Parameters["githubToken"] = githubToken;
+                    }
+                    if (HasRealConfigValue(githubOrganizationName))
+                    {
+                        req.Parameters["githubOrganizationName"] = githubOrganizationName;
+                    }
+                    if (HasRealConfigValue(gitlabToken))
+                    {
+                        req.Parameters["gitlabToken"] = gitlabToken;
+                    }
+                    if (HasValidHttpUrl(gitlabBaseUrl))
+                    {
+                        req.Parameters["gitlabBaseUrl"] = gitlabBaseUrl;
+                    }
+
+                    IResult result = await pulumiService.ExecuteAsync(req);
+
+                    actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
+
+                    if (actionResult.StatusCode >= 400)
+                    {
+                        return Results.Json(actionResult, statusCode: actionResult.StatusCode);
+                    }
                     results.Add(actionResult);
-                    return Results.BadRequest(results);
                 }
 
-                // Inject GitHub credentials from configuration if available for all pulumi actions (generalization purpose)
-                string githubToken = app.Configuration["GitHubToken"] ?? "";
-                string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
-                string gitlabToken = app.Configuration["GitLabToken"] ?? "";
-                string gitlabBaseUrl = app.Configuration["GitLabBaseUrl"] ?? "";
-                req.Parameters ??= new Dictionary<string, string>();
-
-                if (HasRealConfigValue(githubToken))
-                {
-                    req.Parameters["githubToken"] = githubToken;
-                }
-                if (HasRealConfigValue(githubOrganizationName))
-                {
-                    req.Parameters["githubOrganizationName"] = githubOrganizationName;
-                }
-                if (HasRealConfigValue(gitlabToken))
-                {
-                    req.Parameters["gitlabToken"] = gitlabToken;
-                }
-                if (HasValidHttpUrl(gitlabBaseUrl))
-                {
-                    req.Parameters["gitlabBaseUrl"] = gitlabBaseUrl;
-                }
-
-                IResult result = await pulumiService.ExecuteAsync(req);
-
-                actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
-
-                if (actionResult.StatusCode >= 400)
-                {
-                    return Results.Json(actionResult, statusCode: actionResult.StatusCode);
-                }
-                results.Add(actionResult);
+                return Results.Ok(results);
             }
-
-            return Results.Ok(results);
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unhandled exception in createProjectHandler: {Message}", ex.Message);
+                return Results.Json(new ResultPulumiAction
+                {
+                    Name = "",
+                    ResourceType = "",
+                    StatusCode = 500,
+                    Message = $"Internal server error: {ex.Message}",
+                }, statusCode: 500);
+            }
         };
 
         // Azure Static Web Apps proxies backend requests via the fixed /api prefix.
