@@ -101,13 +101,6 @@ public class Program
 
                     IResult result = await pulumiService.ExecuteAsync(req);
 
-                    logger.LogInformation(
-                        "PulumiService executed for resource: {Name} of type {ResourceType}, result: {@Result}",
-                        req.Name,
-                        req.ResourceType,
-                        result
-                    );
-
                     actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
 
                     if (actionResult.StatusCode >= 400)
@@ -117,8 +110,16 @@ public class Program
                     results.Add(actionResult);
                 }
 
-                // Log the results before returning
-                logger.LogInformation("Returning results from createProjectHandler: {@Results}", results);
+                // Log the results before returning, and test JSON serialization
+                try
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(results);
+                    logger.LogInformation("[DEBUG] JSON serialization of results succeeded: {Json}", json);
+                }
+                catch (Exception jsonEx)
+                {
+                    logger.LogError(jsonEx, "[DEBUG] JSON serialization of results failed: {Message}", jsonEx.Message);
+                }
 
                 try
                 {
