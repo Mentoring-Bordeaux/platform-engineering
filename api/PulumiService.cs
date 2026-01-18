@@ -67,9 +67,19 @@ public class PulumiService
             );
         }
 
+
         string requestAndType = $"{request.Name}-{resourceType}";
 
-        string stackName = Regex.Replace(requestAndType.ToLower(), @"[^a-z0-9\-]", "-");
+        var pulumiProjectName = TryGetPulumiProjectName(workingDir);
+        string stackName;
+        if (!string.IsNullOrWhiteSpace(pulumiProjectName))
+        {
+            stackName = $"teachingiac/{pulumiProjectName}/{Regex.Replace(requestAndType.ToLower(), @"[^a-z0-9\-]", "-")}";
+        }
+        else
+        {
+            stackName = Regex.Replace(requestAndType.ToLower(), @"[^a-z0-9\-]", "-");
+        }
 
         _logger.LogInformation("Using stack name: {StackName}", stackName);
 
