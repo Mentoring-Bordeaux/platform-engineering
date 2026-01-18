@@ -126,7 +126,7 @@ public class PulumiService
                 await stack.Workspace.InstallAsync();
             }
 
-            var pulumiProjectName = TryGetPulumiProjectName(workingDir);
+            // var pulumiProjectName = TryGetPulumiProjectName(workingDir); // Supprimé car déjà défini plus haut
 
             string QualifyConfigKey(string key)
             {
