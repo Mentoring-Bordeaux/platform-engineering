@@ -7,7 +7,12 @@ USER root
 RUN apt-get update && apt-get install -y curl ca-certificates \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
-    && apt-get clean
+    && curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg \
+    && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" > /etc/apt/sources.list.d/azure-cli.list \
+    && apt-get update \
+    && apt-get install -y azure-cli \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Enable pnpm via corepack (Pulumi programs use pnpm)
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
@@ -72,11 +77,7 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 
 # Pulumi programs where PulumiService expects them
-COPY --from=build /src/pulumiPrograms /app/pulumiPrograms
-
-
-
-
+# COPY --from=build /src/pulumiPrograms /app/pulumiPrograms
 # Copy all pulumiPrograms content (including any node_modules) recursively
 COPY --from=deps /pulumiPrograms /app/pulumiPrograms
 
@@ -86,4 +87,4 @@ USER root
 RUN chown -R ${APP_UID}:0 /app/pulumiPrograms
 USER ${APP_UID}
 
-ENTRYPOINT ["dotnet", "api.dll"]
+ENTRYPOINT ["/entrypoint.sh"]

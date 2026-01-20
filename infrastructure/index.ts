@@ -172,8 +172,8 @@ const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
                 name: "api",
                 image: "mcr.microsoft.com/dotnet/aspnet:10.0.0-rc.2",
                 resources: {
-                    cpu: 0.25,
-                    memory: "0.5Gi",
+                    cpu: 1,
+                    memory: "2Gi",
                 },
                 env: [
                     {
