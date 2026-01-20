@@ -24,14 +24,6 @@ public class PulumiService
         _environment = environment;
     }
 
-    private async Task EnsureAzureLoginAsync(string workingDir)
-    {
-        var login = await RunCommandAsync("az", "login --identity", workingDir);
-        if (login.ExitCode != 0)
-            throw new Exception("az login --identity failed: " + login.StandardError);
-    }
-
-
     public async Task<IResult> ExecuteAsync(TemplateRequest request)
     {
         var pulumiHome = GetPulumiHome();
@@ -197,7 +189,7 @@ public class PulumiService
             // Configurate the stack with parameters from the request (excluding "type")
             foreach (var kv in request.Parameters.Where(kv => kv.Key != "type"))
                 await stack.SetConfigAsync(QualifyConfigKey(kv.Key), new ConfigValue(kv.Value));
-            await EnsureAzureLoginAsync(workingDir);
+            
             var result = await stack.UpAsync(
                 new UpOptions
                 {
