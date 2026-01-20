@@ -5,11 +5,14 @@ export interface Resource {
    * @example "static-web-app"
    */
   type: string
-  icon: string
-  /**
-   * Configuration fields for this resource type.
+  /** Human-friendly name for this resource instance.
+   * @example "My Static Web App"
    */
-  config: Record<string, Field>
+  name: string
+  /**
+   * User-configurable parameters for this resource type.
+   */
+  parameters: Record<string, Field>
 }
 
 export interface ConfiguredResource {
@@ -22,6 +25,7 @@ export interface ConfiguredResource {
    */
   name: string
   /** User-provided configuration values for this resource instance.
+   * This combines properties (golden paths) and parameter responses.
    */
   config: Record<string, unknown>
 }
