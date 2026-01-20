@@ -204,10 +204,18 @@ const backend = new containerapp.ContainerApp(
               name: "GitHubOrganizationName",
               secretRef: "github-organization-name",
             },
-            { name: "ARM_USE_MSI", value: "true" },
-            { name: "AZURE_SUBSCRIPTION_ID", value: client.subscriptionId },
-            { name: "AZURE_TENANT_ID", value: client.tenantId },
-            { name: "AZURE_CLIENT_ID", value: identity.clientId },
+            { name: "ARM_USE_MSI", 
+                value: "true" 
+            },
+            { name: "AZURE_SUBSCRIPTION_ID", 
+                value: client.subscriptionId 
+            },
+            { name: "AZURE_TENANT_ID", 
+                value: client.tenantId 
+            },
+            { name: "AZURE_CLIENT_ID", 
+                value: identity.clientId 
+            },
           ],
         },
       ],
