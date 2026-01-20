@@ -216,6 +216,15 @@ const backend = new containerapp.ContainerApp(
             { name: "AZURE_CLIENT_ID", 
                 value: identity.clientId 
             },
+            { name: "ARM_SUBSCRIPTION_ID", 
+                value: client.subscriptionId 
+            },
+            { name: "ARM_TENANT_ID", 
+                value: client.tenantId 
+            },
+            { name: "ARM_CLIENT_ID", 
+                value: identity.clientId 
+            },
           ],
         },
       ],
