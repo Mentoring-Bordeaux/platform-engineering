@@ -76,14 +76,9 @@ COPY --from=build /src/pulumiPrograms /app/pulumiPrograms
 
 
 
-# Copy all node_modules from every subfolder that has them (platforms, resources, etc.)
-COPY --from=deps /pulumiPrograms/node_modules /app/pulumiPrograms/node_modules
-COPY --from=deps /pulumiPrograms/platforms/github/node_modules /app/pulumiPrograms/platforms/github/node_modules
-COPY --from=deps /pulumiPrograms/platforms/gitlab/node_modules /app/pulumiPrograms/platforms/gitlab/node_modules
-COPY --from=deps /pulumiPrograms/resources/app-container/node_modules /app/pulumiPrograms/resources/app-container/node_modules
-COPY --from=deps /pulumiPrograms/resources/app-service/node_modules /app/pulumiPrograms/resources/app-service/node_modules
-COPY --from=deps /pulumiPrograms/resources/static-web-app/node_modules /app/pulumiPrograms/resources/static-web-app/node_modules
-COPY --from=deps /pulumiPrograms/resources/static-web-site/node_modules /app/pulumiPrograms/resources/static-web-site/node_modules
+
+# Copy all pulumiPrograms content (including any node_modules) recursively
+COPY --from=deps /pulumiPrograms /app/pulumiPrograms
 
 # COPY runs as root and produces root-owned files; fix ownership so the runtime
 # non-root user can write temp files (pnpm creates _tmp_* files in the project dir).
