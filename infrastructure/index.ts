@@ -137,10 +137,10 @@ const backend = new containerapp.ContainerApp(
     resourceGroupName: rg.name,
     managedEnvironmentId: env.id,
     identity: {
-      type: "UserAssigned",
-      userAssignedIdentities: identity.id.apply((id) => ({
+    type: "SystemAssigned, UserAssigned",
+    userAssignedIdentities: identity.id.apply(id => ({
         [id]: {},
-      })) as any,
+    })) as any,
     },
 
     configuration: {
