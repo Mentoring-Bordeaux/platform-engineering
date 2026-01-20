@@ -4,11 +4,14 @@ WORKDIR /app
 
 # Install Pulumi CLI and Node.js (runtime requirements)
 USER root
-RUN apt-get update && apt-get install -y curl ca-certificates \
+RUN apt-get update && apt-get install -y \
+      curl ca-certificates gnupg apt-transport-https \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
+    && . /etc/os-release \
     && curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg \
-    && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" > /etc/apt/sources.list.d/azure-cli.list \
+    && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ ${VERSION_CODENAME} main" \
+        > /etc/apt/sources.list.d/azure-cli.list \
     && apt-get update \
     && apt-get install -y azure-cli \
     && apt-get clean \
