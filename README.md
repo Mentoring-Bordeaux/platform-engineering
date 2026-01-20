@@ -13,11 +13,11 @@ The project consists of four main components:
 
 ### Prerequisites
 
--   [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
--   [Node.js](https://nodejs.org/) (v22 or higher)
--   [pnpm](https://pnpm.io/) (`npm install -g pnpm`)
--   [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/)
--   [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli) (for deployment)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [Node.js](https://nodejs.org/) (v22 or higher)
+- [pnpm](https://pnpm.io/) (`npm install -g pnpm`)
+- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/)
+- [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli) (for deployment)
 
 ### Run the Full Stack
 
@@ -30,9 +30,9 @@ aspire run
 
 This command automatically starts:
 
--   The frontend (app)
--   The API (api)
--   The Aspire dashboard to monitor services
+- The frontend (app)
+- The API (api)
+- The Aspire dashboard to monitor services
 
 ### Run Services Individually
 
@@ -112,14 +112,17 @@ dotnet user-secrets set "GitHubOrganizationName" "your_organization_name"
 ```
 
 **GitHub token permissions required:**
+
 - Read access to metadata
 - Read and Write access to administration
 
 **Note:** User secrets are stored in your user profile and are NOT committed to source control:
+
 - Windows: `%APPDATA%\Microsoft\UserSecrets\<user_secrets_id>\secrets.json`
 - Linux/macOS: `~/.microsoft/usersecrets/<user_secrets_id>/secrets.json`
 
 **CORS behavior:**
+
 - In **development**: The API allows requests from any origin for convenience
 - In **production**: Set `NuxtAppUrl` to the exact frontend origin for strict CORS enforcement
 
@@ -142,6 +145,6 @@ cp app/.env.example app/.env
 
 ## 📚 Documentation
 
--   [Frontend README](app/README.md)
--   [API README](api/README.md)
--   [Infrastructure README](infrastructure/README.md)
+- [Frontend README](app/README.md)
+- [API README](api/README.md)
+- [Infrastructure README](infrastructure/README.md)

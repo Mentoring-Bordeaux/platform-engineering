@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Scalar.AspNetCore;
 using YamlDotNet.Serialization;
@@ -60,48 +59,62 @@ public class Program
         app.MapPost(
             "/create-project",
             async (
-                TemplateRequest[] request,
+                CreateProjectRequest request,
                 PulumiService pulumiService,
                 ILogger<Program> logger
             ) =>
             {
-                List<ResultPulumiAction> results = new List<ResultPulumiAction>();
-                foreach (TemplateRequest req in request)
+                if (string.IsNullOrWhiteSpace(request.TemplateName))
                 {
-                    ResultPulumiAction? actionResult = CreateResultForInputError(req);
+                    return Results.BadRequest(new { message = "TemplateName is required" });
+                }
 
-                    if (actionResult != null)
-                    {
-                        results.Add(actionResult);
-                        return Results.BadRequest(results);
-                    }
+                if (string.IsNullOrWhiteSpace(request.ProjectName))
+                {
+                    return Results.BadRequest(new { message = "ProjectName is required" });
+                }
 
-                    // Inject GitHub credentials from configuration if available for all pulumi actions (generalization purpose)
+                try
+                {
+                    // Inject GitHub credentials from configuration
                     string githubToken = app.Configuration["GitHubToken"] ?? "";
                     string githubOrganizationName =
                         app.Configuration["GitHubOrganizationName"] ?? "";
-                    req.Parameters ??= new Dictionary<string, string>();
                     if (!string.IsNullOrEmpty(githubToken))
                     {
-                        req.Parameters["githubToken"] = githubToken;
+                        request.Parameters["githubToken"] = githubToken;
                     }
+
                     if (!string.IsNullOrEmpty(githubOrganizationName))
                     {
-                        req.Parameters["githubOrganizationName"] = githubOrganizationName;
+                        request.Parameters["githubOrganizationName"] = githubOrganizationName;
                     }
 
-                    IResult result = await pulumiService.ExecuteAsync(req);
+                    IResult result = await pulumiService.ExecuteTemplateAsync(request);
 
-                    actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
-
-                    if (actionResult.StatusCode >= 400)
+                    if (result is JsonHttpResult<Dictionary<string, object>> jsonResult)
                     {
-                        return Results.Json(actionResult, statusCode: actionResult.StatusCode);
+                        logger.LogInformation(
+                            "Project created successfully: {ProjectName} using {TemplateName}",
+                            request.ProjectName,
+                            request.TemplateName
+                        );
+                        return Results.Ok(
+                            new
+                            {
+                                message = "Project created successfully",
+                                outputs = jsonResult.Value,
+                            }
+                        );
                     }
-                    results.Add(actionResult);
-                }
 
-                return Results.Ok(results);
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error creating project from template");
+                    return Results.Problem(ex.Message, statusCode: 500);
+                }
             }
         );
 
@@ -120,42 +133,39 @@ public class Program
                     return Results.Ok(new List<object>());
                 }
 
-                var yamlFiles = Directory
-                    .GetFiles(templatesDir, "*.yaml")
-                    .Concat(Directory.GetFiles(templatesDir, "*.yml"))
-                    .ToList();
-
-                if (!yamlFiles.Any())
-                {
-                    logger.LogInformation(
-                        "No template files found in: {TemplatesDir}",
-                        templatesDir
-                    );
-                    return Results.Ok(new List<object>());
-                }
-
                 var templates = new List<object>();
 
-                foreach (var file in yamlFiles)
+                // Get all subdirectories in templates
+                var templateDirs = Directory.GetDirectories(templatesDir);
+
+                foreach (var templateDir in templateDirs)
                 {
+                    var templateYamlPath = Path.Combine(templateDir, "template.yaml");
+
+                    if (!File.Exists(templateYamlPath))
+                    {
+                        logger.LogWarning("template.yaml not found in: {TemplateDir}", templateDir);
+                        continue;
+                    }
+
                     try
                     {
-                        var yamlContent = File.ReadAllText(file);
+                        var yamlContent = File.ReadAllText(templateYamlPath);
                         var deserializer = new DeserializerBuilder().Build();
                         var yamlObject = deserializer.Deserialize<object>(yamlContent);
 
                         templates.Add(yamlObject);
                         logger.LogInformation(
-                            "Successfully loaded template: {FileName}",
-                            Path.GetFileName(file)
+                            "Successfully loaded template: {TemplateName}",
+                            Path.GetFileName(templateDir)
                         );
                     }
                     catch (Exception ex)
                     {
                         logger.LogError(
                             ex,
-                            "Failed to parse template file: {FileName}",
-                            Path.GetFileName(file)
+                            "Failed to parse template file: {TemplateDir}",
+                            templateDir
                         );
                     }
                 }
@@ -165,141 +175,5 @@ public class Program
         );
 
         app.Run();
-    }
-
-    private static ResultPulumiAction? CreateResultForInputError(TemplateRequest request)
-    {
-        if (request == null)
-        {
-            return new ResultPulumiAction
-            {
-                Name = "",
-                ResourceType = "",
-                StatusCode = 400,
-                Message = "Request body is null",
-            };
-        }
-        Console.WriteLine($"Request received: Name={request.Name}, Type={request.ResourceType}");
-
-        if (request.Name == null || string.IsNullOrWhiteSpace(request.Name))
-        {
-            return new ResultPulumiAction
-            {
-                Name = "NotSpecified",
-                ResourceType = request.ResourceType ?? "NotSpecified",
-                StatusCode = 400,
-                Message = "Missing 'name' in request",
-            };
-        }
-        if (request.ResourceType == null || string.IsNullOrWhiteSpace(request.ResourceType))
-        {
-            return new ResultPulumiAction
-            {
-                Name = request.Name,
-                ResourceType = "NotSpecified",
-                StatusCode = 400,
-                Message = "Missing 'resourceType' parameter",
-            };
-        }
-
-        // Add verification that the type exists in the pulumiPrograms folder
-        return null;
-    }
-
-    private static ResultPulumiAction ProcessResult(
-        IResult result,
-        string name,
-        string resourceType,
-        ILogger log
-    )
-    {
-        if (result is JsonHttpResult<Dictionary<string, object>> jsonResult)
-        {
-            log.LogInformation(
-                "Resource created successfully: {Name} of {ResourceType}",
-                name,
-                resourceType
-            );
-            return new ResultPulumiAction
-            {
-                Name = name,
-                ResourceType = resourceType,
-                StatusCode = 200,
-                Message = "Resource created successfully",
-                Outputs = jsonResult.Value,
-            };
-        }
-        else if (result is ProblemHttpResult problemResult)
-        {
-            string? errorData = problemResult.ProblemDetails.Detail;
-
-            if (string.IsNullOrEmpty(errorData))
-            {
-                return new ResultPulumiAction
-                {
-                    Name = name,
-                    ResourceType = resourceType,
-                    StatusCode = 500,
-                    Message = "Unknown error occurred, no details provided",
-                };
-            }
-
-            const string PostErrorRegex = @"POST.*: (\d+) (.*?)\. \[(.*)\]";
-            var match = Regex.Match(errorData, PostErrorRegex);
-            if (match.Success)
-            {
-                var statusCodeStr = match.Groups[1].Value;
-                var errorMessage = match.Groups[2].Value;
-                var errorDetail = match.Groups[3].Value;
-
-                // Try to parse the string status code into an integer
-                if (int.TryParse(statusCodeStr, out var statusCodeInt))
-                {
-                    return new ResultPulumiAction
-                    {
-                        Name = name,
-                        ResourceType = resourceType,
-                        StatusCode = statusCodeInt,
-                        Message = $"{errorMessage}. Details: {errorDetail}",
-                    };
-                }
-            }
-
-            const string MissingVariableRegex =
-                @"Missing required configuration variable '.*?([a-zA-Z0-9]+)'";
-            match = Regex.Match(errorData, MissingVariableRegex);
-            if (match.Success)
-            {
-                var missingVar = match.Groups[1].Value;
-                return new ResultPulumiAction
-                {
-                    Name = name,
-                    ResourceType = resourceType,
-                    StatusCode = 400,
-                    Message = $"Missing required parameter '{missingVar}'",
-                };
-            }
-            return new ResultPulumiAction
-            {
-                Name = name,
-                ResourceType = resourceType,
-                StatusCode = problemResult.ProblemDetails.Status ?? 500,
-                Message =
-                    problemResult.ProblemDetails.Detail
-                    ?? "Unknown error occurred, no details provided",
-            };
-        }
-        else
-        {
-            log.LogError("Unknown result type encountered in treatResult method.");
-            log.LogError("Result type: {ResultType}", result.GetType().FullName);
-            return new ResultPulumiAction
-            {
-                Name = name,
-                ResourceType = resourceType,
-                StatusCode = 500,
-                Message = "Unknown result type",
-            };
-        }
     }
 }
