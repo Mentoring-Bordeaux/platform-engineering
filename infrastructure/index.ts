@@ -214,6 +214,9 @@ const backend = new containerapp.ContainerApp(
             { name: "ARM_SUBSCRIPTION_ID", 
                 value: client.subscriptionId 
             },
+            { name: "NuxtAppUrl", 
+                value: staticApp.defaultHostname
+            },
           ],
         },
       ],
@@ -221,6 +224,35 @@ const backend = new containerapp.ContainerApp(
   },
   { dependsOn: [roleAssignment] },
 );
+
+// --- RBAC pour que Pulumi (MSI System Assigned) puisse créer/lire des Resource Groups ---
+// Contributor role
+const contributorRoleDefinitionId =
+  "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c";
+
+// Scope subscription (obligatoire si tes programmes créent des RG dynamiques)
+const subscriptionScope = pulumi.interpolate`/subscriptions/${client.subscriptionId}`;
+
+// RoleAssignmentName doit être un GUID
+const raSystemContributorName = new random.RandomUuid(
+  `ra-ca-system-contrib-guid-${projectPrefix}`,
+).result;
+
+const roleAssignmentSystemContributor = new authorization.RoleAssignment(
+  `ra-ca-system-contrib-${projectPrefix}`,
+  {
+    roleAssignmentName: raSystemContributorName,
+
+    // principalId de la System Assigned Identity de la Container App
+    principalId: backend.identity.apply((i) => i?.principalId!),
+
+    roleDefinitionId: contributorRoleDefinitionId,
+    scope: subscriptionScope,
+    principalType: "ServicePrincipal",
+  },
+  { dependsOn: [backend] },
+);
+
 
 const staticWebAppSecrets = web.listStaticSiteSecretsOutput({
   name: staticApp.name,
