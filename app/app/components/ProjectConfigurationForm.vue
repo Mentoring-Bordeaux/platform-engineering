@@ -40,16 +40,16 @@
         />
       </UFormField>
       <UFormField
-        v-for="(configOption, configKey) in resource.config"
-        :key="`resources.${index}.config.${configKey}`"
-        :name="`resources.${index}.config.${configKey}`"
-        :label="configOption.label"
-        :required="configOption.required || false"
+        v-for="(paramOption, paramKey) in resource.parameters"
+        :key="`resources.${index}.parameters.${paramKey}`"
+        :name="`resources.${index}.parameters.${paramKey}`"
+        :label="paramOption.label"
+        :required="paramOption.required || false"
       >
         <GenericFormInput
-          v-model="state.resources[index]!.config[configKey]"
-          :config-option="configOption"
-          :placeholder="configOption.description"
+          v-model="state.resources[index]!.parameters[paramKey]"
+          :config-option="paramOption"
+          :placeholder="paramOption.description"
           class="w-full"
         />
       </UFormField>
@@ -136,8 +136,14 @@ const validationSchema = computed(() =>
   generateProjectConfigurationSchema(props.projectData)
 )
 
+interface ResourceFormState {
+  name: string
+  type: string
+  parameters: Record<string, unknown>
+}
+
 interface ConfigurationFormState {
-  resources: ConfiguredResource[]
+  resources: ResourceFormState[]
   platform: ConfiguredPlatform
 }
 
@@ -145,7 +151,7 @@ const state = ref<ConfigurationFormState>({
   resources: resources.value.map(resource => ({
     name: '',
     type: resource.type,
-    config: generateDefaultConfig(resource.config)
+    parameters: generateDefaultConfig(resource.parameters)
   })),
   platform: {
     name: '',
@@ -209,12 +215,19 @@ async function onSubmit() {
   }
 
   const listRessources: RequestElementTemplate[] = state.value.resources.map(
-    (resource): RequestElementTemplate => {
+    (resourceState, index): RequestElementTemplate => {
+      const templateResource = props.projectData.template.resources[index]
+      // Merge properties (golden paths) with user-provided parameters
+      const mergedConfig = {
+        ...templateResource.properties,
+        ...resourceState.parameters
+      }
+
       return {
-        name: resource.name,
-        resourceType: 'resources//' + formatResourceType(resource.type),
+        name: resourceState.name,
+        resourceType: 'resources//' + formatResourceType(resourceState.type),
         parameters: Object.fromEntries(
-          Object.entries(resource.config).map(([key, value]) => [
+          Object.entries(mergedConfig).map(([key, value]) => [
             key,
             String(value)
           ])

@@ -83,15 +83,15 @@ export function generateFieldSchema(field: Field): z.ZodTypeAny {
  * Generate a Zod schema for a resource configuration
  */
 export function generateResourceConfigSchema(resource: Resource) {
-  const configShape: Record<string, z.ZodTypeAny> = {}
+  const parametersShape: Record<string, z.ZodTypeAny> = {}
 
-  Object.entries(resource.config).forEach(([key, field]) => {
-    configShape[key] = generateFieldSchema(field)
+  Object.entries(resource.parameters).forEach(([key, field]) => {
+    parametersShape[key] = generateFieldSchema(field)
   })
 
   return z.object({
     name: z.string(),
-    config: z.object(configShape)
+    parameters: z.object(parametersShape)
   })
 }
 

@@ -1,5 +1,25 @@
 <template>
+  <div
+    v-if="loading"
+    class="flex justify-center py-8"
+  >
+    <UIcon
+      name="i-lucide-loader-circle"
+      class="animate-spin"
+      size="32"
+    />
+  </div>
+  <div
+    v-else-if="error"
+    class="py-8 text-center"
+  >
+    <p class="mb-4 text-red-600 dark:text-red-400">
+      Failed to load templates: {{ error.message }}
+    </p>
+    <UButton @click="fetchTemplates">Retry</UButton>
+  </div>
   <UForm
+    v-else
     :schema="CreateAProjectFormSchema"
     :state="state"
     class="w-full max-w-4xl"
@@ -38,33 +58,35 @@
       </UFormField>
     </FormSection>
 
-    <!-- Preset Selection Section -->
+    <!-- Template Selection Section -->
     <FormSection
-      id="preset-selection"
-      title="Preset"
+      id="template-selection"
+      title="Template"
     >
       <UFormField
-        name="preset"
-        label="Select a project preset"
+        name="template"
+        label="Select a project template"
         required
       >
-        <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div
+          v-if="templates.length === 0"
+          class="py-8 text-center text-gray-600 dark:text-gray-400"
+        >
+          No templates available
+        </div>
+        <div
+          v-else
+          class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+        >
           <CardSelect
-            v-for="(preset, key) in PRESETS_WITHOUT_BLANK"
-            :key="key"
-            :title="preset.name"
-            :description="preset.description"
-            :is-selected="state.preset === key"
-            @select="onPresetSelect(key)"
+            v-for="(template, index) in templates"
+            :key="index"
+            :title="template.name"
+            :description="template.description"
+            :is-selected="state.templateIndex === index"
+            @select="onTemplateSelect(index)"
           />
         </div>
-        <USeparator label="or" />
-        <CardSelect
-          title="Blank Template"
-          description="Use your own custom template repository."
-          :is-selected="state.preset === 'blank'"
-          @select="onPresetSelect('blank')"
-        />
       </UFormField>
     </FormSection>
 
@@ -112,27 +134,23 @@
 
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { z } from 'zod'
 import { PLATFORMS, type PlatformKey } from '~/config/platforms'
-import { PRESETS, type PresetKey } from '~/config/presets'
 import type { ProjectOptions } from '~/config/project-options'
-import { RESOURCES } from '~/config/resources'
+import type { Resource, TemplateResource } from '~/types'
 
 const projectStore = useProjectStore()
-
 const router = useRouter()
-
-const { blank: _, ...PRESETS_WITHOUT_BLANK } = PRESETS
+const { templates, loading, error, fetchTemplates } = useTemplates()
 
 // Section display logic
-
 const showPlatformSection = ref(false)
 const showSubmitButton = ref(false)
 
-const onPresetSelect = (key: PresetKey) => {
+const onTemplateSelect = (index: number) => {
   showPlatformSection.value = true
-  state.preset = key
+  state.templateIndex = index
 }
 
 const onPlatformSelect = (key: PlatformKey) => {
@@ -141,11 +159,10 @@ const onPlatformSelect = (key: PlatformKey) => {
 }
 
 // Schema for form data validation
-
 const CreateAProjectFormSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
-  preset: z.literal(Object.keys(PRESETS)).or(z.literal('blank')),
+  templateIndex: z.number().min(0),
   platform: z.literal(Object.keys(PLATFORMS))
 })
 
@@ -154,7 +171,7 @@ type CreateAProjectFormType = z.infer<typeof CreateAProjectFormSchema>
 const state = reactive<CreateAProjectFormType>({
   name: projectStore.projectData?.name || '',
   description: projectStore.projectData?.description || '',
-  preset: '',
+  templateIndex: -1,
   platform: ''
 })
 
@@ -163,30 +180,47 @@ function handleFormValidationErrors(error: unknown) {
 }
 
 // Submit action
-
 async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
   const validation = CreateAProjectFormSchema.safeParse(event.data)
 
   if (!validation.success) {
     console.error('Form validation failed:', validation.error)
-
     return
   }
 
   console.log('Form submitted with data:', validation.data)
 
-  const presetKey = validation.data.preset as PresetKey
   const platformKey = validation.data.platform as PlatformKey
+  const selectedTemplate = templates.value[validation.data.templateIndex]
 
-  const preset = PRESETS[presetKey]
+  if (!selectedTemplate) {
+    console.error('Template not found')
+    return
+  }
 
-  const projectData = {
-    ...validation.data,
-    resources: preset.resources.map(resourceName => RESOURCES[resourceName]),
+  // Convert template resources to Resource format
+  const resources: Resource[] = selectedTemplate.resources.map(
+    (templateResource: TemplateResource) => ({
+      type: templateResource.type,
+      name: templateResource.name,
+      parameters: templateResource.parameters
+    })
+  )
+
+  const projectData: ProjectOptions = {
+    name: validation.data.name,
+    description: validation.data.description,
+    template: selectedTemplate,
+    resources,
     platform: PLATFORMS[platformKey]
-  } satisfies ProjectOptions
+  }
 
   projectStore.setProjectData(projectData)
   router.push('/configure')
 }
+
+// Fetch templates on mount
+onMounted(() => {
+  fetchTemplates()
+})
 </script>
