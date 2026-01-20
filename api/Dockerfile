@@ -90,4 +90,4 @@ USER root
 RUN chown -R ${APP_UID}:0 /app/pulumiPrograms
 USER ${APP_UID}
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["dotnet", "api.dll"]
