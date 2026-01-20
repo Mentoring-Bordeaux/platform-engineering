@@ -74,6 +74,8 @@ jobs:
       ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}
       # API runtime configuration
       NUXT_APP_URL: ${{ needs.download_infra_outputs.outputs.STATIC_WEB_APP_URL }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +96,9 @@ jobs:
             --resource-group "${RG}" \
             --image "${ACR_LOGIN_SERVER}/platform-engineering-api:latest" \
             --set-env-vars \
-              NuxtAppUrl="${NUXT_APP_URL}"
+              NuxtAppUrl="${NUXT_APP_URL}" \
+              ARM_CLIENT_ID="${ARM_CLIENT_ID}" \
+              AZURE_CLIENT_ID="${AZURE_CLIENT_ID}"
 
   deploy-frontend-webapp:
     environment: development
