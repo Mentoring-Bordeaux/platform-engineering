@@ -74,10 +74,6 @@ jobs:
       ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}
       # API runtime configuration
       NUXT_APP_URL: ${{ needs.download_infra_outputs.outputs.STATIC_WEB_APP_URL }}
-      GH_ORG_NAME: ${{ secrets.GH_ORG_NAME }}
-      # Sensitive values (stored as Azure Container Apps secrets)
-      GH_PAT: ${{ secrets.GH_PAT }}
-      GL_PAT: ${{ secrets.GL_PAT }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,31 +88,13 @@ jobs:
       - name: Deploy to Azure Container Apps
         shell: bash
         run: |
-          set -euo pipefail
-
-          if [ -z "${GH_PAT:-}" ] || [ -z "${GL_PAT:-}" ]; then
-            echo "::error::Missing required secrets. Define GH_PAT and GL_PAT in GitHub Actions secrets (prefer Environment: development)."
-            exit 1
-          fi
-
-          # Store tokens as Azure Container Apps secrets (server-side).
-          az containerapp secret set \
-            --name "${ACR_NAME}" \
-            --resource-group "${RG}" \
-            --secrets \
-              github-token="${GH_PAT}" \
-              gitlab-token="${GL_PAT}"
-
           # Deploy image and bind app env vars (tokens via secretref + non-sensitive config values).
           az containerapp update \
             --name "${ACR_NAME}" \
             --resource-group "${RG}" \
             --image "${ACR_LOGIN_SERVER}/platform-engineering-api:latest" \
             --set-env-vars \
-              GitHubToken=secretref:github-token \
-              GitLabToken=secretref:gitlab-token \
-              NuxtAppUrl="${NUXT_APP_URL}" \
-              GitHubOrganizationName="${GH_ORG_NAME:-}"
+              NuxtAppUrl="${NUXT_APP_URL}"
 
   deploy-frontend-webapp:
     environment: development

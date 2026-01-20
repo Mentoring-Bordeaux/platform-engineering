@@ -13,6 +13,9 @@ const projectPrefix = "platformeng";
 
 const cfg = new pulumi.Config();
 const pulumiAccessToken = cfg.requireSecret("PULUMI_ACCESS_TOKEN");
+const githubToken = cfg.requireSecret("GithubToken");
+const gitlabToken = cfg.requireSecret("GitLabToken");
+const githubOrganizationName = cfg.requireSecret("GitHubOrganizationName");
 
 
 const rg = new resources.ResourceGroup(`rg-${projectPrefix}-`);
@@ -68,28 +71,33 @@ const vault = new keyvault.Vault(`kv-${projectPrefix}`, {
   },
 });
 
-const kvSecretName = "pulumi-access-token";
+const kvSecrets: Record<string, pulumi.Input<string>> = {
+  "pulumi-access-token": pulumiAccessToken,
+  "github-token": githubToken,
+  "gitlab-token": gitlabToken,
+  "github-organization-name": githubOrganizationName,
+};
 
-const kvSecret = new keyvault.Secret(`kvsec-${projectPrefix}`, {
-  resourceGroupName: rg.name,
-  vaultName: vault.name,
-  secretName: kvSecretName,
-  properties: {
-    value: pulumiAccessToken,
-  },
-});
-
-// Container Apps veut l'URL du secret Key Vault (avec version)
-const kvSecretInfo = keyvault.getSecretOutput(
-  {
+const createdKvSecrets: Record<string, keyvault.Secret> = {};
+for (const [secretName, secretValue] of Object.entries(kvSecrets)) {
+  createdKvSecrets[secretName] = new keyvault.Secret(`kvsec-${projectPrefix}-${secretName}`, {
     resourceGroupName: rg.name,
     vaultName: vault.name,
-    secretName: kvSecretName,
-  },
-  { dependsOn: [kvSecret] }
-);
+    secretName,
+    properties: { value: secretValue },
+  });
+}
 
-const kvSecretUriWithVersion = kvSecretInfo.properties.secretUriWithVersion;
+// Container Apps veut l'URL du secret Key Vault (avec version)
+const kvSecretUris: Record<string, pulumi.Output<string>> = {};
+for (const secretName of Object.keys(kvSecrets)) {
+  const s = createdKvSecrets[secretName];
+  const info = keyvault.getSecretOutput(
+    { resourceGroupName: rg.name, vaultName: vault.name, secretName },
+    { dependsOn: [s] }
+  );
+  kvSecretUris[secretName] = info.properties.secretUriWithVersion;
+}
 
 // Donner le droit à l'identité (UAI) de lire les secrets du vault (RBAC)
 const keyVaultSecretsUserRoleDefinitionId =
@@ -130,9 +138,24 @@ const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
         secrets: [
         {
           name: "pulumi-access-token",
-          identity: identity.id,            // UAI utilisée pour lire Key Vault
-          keyVaultUrl: kvSecretUriWithVersion, // URL du secret KV (avec version)
+          identity: identity.id,            
+          keyVaultUrl: kvSecretUris["pulumi-access-token"],
         },
+        {
+            name: "github-token",
+            identity: identity.id,            
+            keyVaultUrl: kvSecretUris["github-token"], 
+          },
+          {
+            name: "gitlab-token",
+            identity: identity.id,            
+            keyVaultUrl: kvSecretUris["gitlab-token"],       
+        },
+            {  
+            name: "github-organization-name",
+            identity: identity.id,            
+            keyVaultUrl: kvSecretUris["github-organization-name"],       
+        },  
       ],
     },
     template: {
@@ -141,13 +164,25 @@ const backend = new containerapp.ContainerApp(`ca-${projectPrefix}-`, {
                 name: "api",
                 image: "mcr.microsoft.com/dotnet/aspnet:10.0.0-rc.2",
                 resources: {
-                    cpu: 0.25,
-                    memory: "0.5Gi",
+                    cpu: 0.5,
+                    memory: "2Gi",
                 },
                 env: [
                     {
                     name: "PULUMI_ACCESS_TOKEN",     // ✅ variable dans le container
                     secretRef: "pulumi-access-token" // ✅ référence le secret "safe"
+                    },
+                    {
+                      name: "GitHubToken",
+                      secretRef: "github-token"
+                    },
+                    {
+                      name: "GitLabToken",
+                      secretRef: "gitlab-token"
+                    },
+                    {
+                      name: "GitHubOrganizationName",
+                      secretRef: "github-organization-name"
                     },
                 ],
             },
