@@ -81,7 +81,7 @@
           <CardSelect
             v-for="(template, index) in templates"
             :key="index"
-            :title="template.name"
+            :title="template.displayName || template.name"
             :description="template.description"
             :is-selected="state.templateIndex === index"
             @select="onTemplateSelect(index)"
@@ -138,7 +138,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { z } from 'zod'
 import { PLATFORMS, type PlatformKey } from '~/config/platforms'
 import type { ProjectOptions } from '~/config/project-options'
-import type { Resource, TemplateResource } from '~/types'
 
 const projectStore = useProjectStore()
 const router = useRouter()
@@ -198,20 +197,10 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
     return
   }
 
-  // Convert template resources to Resource format
-  const resources: Resource[] = selectedTemplate.resources.map(
-    (templateResource: TemplateResource) => ({
-      type: templateResource.type,
-      name: templateResource.name,
-      parameters: templateResource.parameters
-    })
-  )
-
   const projectData: ProjectOptions = {
     name: validation.data.name,
     description: validation.data.description,
     template: selectedTemplate,
-    resources,
     platform: PLATFORMS[platformKey]
   }
 

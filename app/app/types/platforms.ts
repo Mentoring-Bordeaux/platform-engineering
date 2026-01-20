@@ -11,17 +11,3 @@ export interface Platform {
    */
   config: Record<string, Field>
 }
-
-export interface ConfiguredPlatform {
-  /** Type of platform where the repository is hosted.
-   * @example "github"
-   */
-  type: string
-  /** Human-friendly name for this repository
-   * @example "My GitHub Repository"
-   */
-  name: string
-  /** User-provided configuration values for the created repository.
-   */
-  config: Record<string, unknown>
-}
