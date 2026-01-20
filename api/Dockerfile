@@ -44,10 +44,13 @@ RUN corepack enable
 COPY ./pulumiPrograms/package.json ./pulumiPrograms/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Install github subproject dependencies
-WORKDIR /pulumiPrograms/platforms/github
-COPY ./pulumiPrograms/platforms/github/package.json ./pulumiPrograms/platforms/github/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+WORKDIR /pulumiPrograms
+COPY ./pulumiPrograms ./
+RUN find . -name "package.json" -not -path "./node_modules/*" -execdir pnpm install --frozen-lockfile \;
+# # Install github subproject dependencies
+# WORKDIR /pulumiPrograms/platforms/github
+# COPY ./pulumiPrograms/platforms/github/package.json ./pulumiPrograms/platforms/github/pnpm-lock.yaml ./
+# RUN pnpm install --frozen-lockfile
 
 # Build Stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0.100-rc.2 AS build
