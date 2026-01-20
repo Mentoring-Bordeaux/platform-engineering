@@ -1,63 +1,57 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as resources from "@pulumi/azure-native/resources";
 import * as os from "os";
-
 import { createStaticWebApp } from "./templates/static-web-app/static-web-app";
 import { createGithubRepo } from "./templates/github/github";
 import { createAppService } from "./templates/app-service/app-service";
-import {
-  createReactRepoInitial,
-  deployStaticWebAppFromRepo,
-} from "./templates/react-ts-app/react-ts-app";
+import { createDotNetApiTemplate } from "./templates/dotnet-api/dotnet-api";
+import { createReactStaticWebApp } from "./templates/react-ts-app/react-ts-app";
 
 const config = new pulumi.Config();
 const projectName = config.require("projectName");
 const resourcesConfig = config.requireObject<any[]>("resources");
 
-const rg = new resources.ResourceGroup(`${projectName}-rg`, {
+const rg = new resources.ResourceGroup(`rg-${projectName}`, {
   location: "westeurope",
 });
 
 const TEMP_DIR = os.tmpdir();
-
 const exportedUrls: Record<string, pulumi.Output<string>> = {};
 
-const githubRepos: Record<string, pulumi.Output<string>> = {};
-
-for (const res of resourcesConfig.filter(r => r.resourceType.toLowerCase() === "github")) {
-  const repo = createGithubRepo(
-    res.name,
-    res.parameters?.isPrivate === "true",
-    res.parameters?.description,
-    res.parameters?.githubOrg,
-    res.parameters?.githubToken
-  );
-
-  githubRepos[res.name] = repo.repoUrl;
-  exportedUrls[`${res.name}-repo-url`] = repo.repoUrl;
-}
-
-for (const res of resourcesConfig.filter(r => r.resourceType.toLowerCase() !== "github")) {
+for (const res of resourcesConfig) {
   const type = res.resourceType.toLowerCase();
   const name = res.name;
   const params = res.parameters ?? {};
 
   switch (type) {
-    case "static-web-app": {
-      const firstRepoUrl = Object.values(githubRepos)[0];
-      if (!firstRepoUrl) throw new Error("Aucun repo GitHub défini pour la Static Web App");
-
-      const swa = firstRepoUrl.apply(repoUrl =>
-        createStaticWebApp(
-          name,
-          rg.name,
-          params.location ?? "westeurope",
-          repoUrl,
-          params.branch ?? "main"
-        )
+    case "github": {
+      const githubRepo = createGithubRepo(
+        params.repoName ?? name,
+        params?.isPrivate === "true",
+        params?.description,
+        params?.githubOrg,
+        params?.githubToken
       );
+      exportedUrls[`${params.repoName ?? name}-repo-url`] = githubRepo.repoUrl;
+      break;
+    }
 
-      exportedUrls[`${name}-url`] = swa.apply(s => s.url);
+    case "static-web-app": {
+      const githubRepoUrl =
+        exportedUrls[`${params.repoName}-repo-url`] ?? params.repoUrl;
+      if (!params.githubToken && !githubRepoUrl) {
+        throw new Error(
+          "Pour Static Web App, il faut repoUrl ou une ressource GitHub (repoName)."
+        );
+      }
+      const swa = createStaticWebApp(
+        name,
+        rg.name,
+        params.location ?? "westeurope",
+        githubRepoUrl ?? "",
+        params.branch ?? "main"
+      );
+      exportedUrls[`${name}-url`] = swa.url;
       break;
     }
 
@@ -68,25 +62,60 @@ for (const res of resourcesConfig.filter(r => r.resourceType.toLowerCase() !== "
     }
 
     case "react-ts-app": {
-      const firstRepoUrl = Object.values(githubRepos)[0];
-      if (!firstRepoUrl) throw new Error("Aucun repo GitHub défini pour l’app React");
-
-      const reactAppUrl = firstRepoUrl.apply(repoUrl => {
-        createReactRepoInitial(repoUrl, TEMP_DIR, name);
-        const reactApp = deployStaticWebAppFromRepo(
-          name,
-          rg.name,
-          params.location ?? "westeurope",
-          repoUrl,
-          params.branch ?? "main"
+      const repoUrlExisting = exportedUrls[`${params.repoName}-repo-url`];
+      if (!params.githubToken && !repoUrlExisting) {
+        throw new Error(
+          "Pour React TS App, il faut repoUrl ou une ressource GitHub (repoName)."
         );
+      }
 
-        return reactApp.url;
+      const reactApp = createReactStaticWebApp({
+        tempDir: TEMP_DIR,
+        appName: name,
+        githubToken: params.githubToken,
+        isPrivate: params?.isPrivate === "true",
+        orgName: params.githubOrg,
+        description: params?.description,
+        resourceGroupName: rg.name,
+        location: params.location ?? "westeurope",
+        branch: params.branch ?? "main",
+        repoUrl: repoUrlExisting, // <-- URL récupérée automatiquement
       });
 
-      exportedUrls[`${name}-url`] = reactAppUrl;
+      exportedUrls[`${name}-url`] = reactApp.url;
+      exportedUrls[`${name}-repo-url`] = repoUrlExisting ?? params.repoName;
       break;
     }
+
+    case "dotnet-api": {
+      const repoUrlExisting =
+        exportedUrls[`${params.repoName}-repo-url`] ?? params.repoUrl;
+      if (!repoUrlExisting) {
+        throw new Error(
+          "Pour .NET API, il faut repoUrl ou une ressource GitHub (repoName)."
+        );
+      }
+
+      const version = params.version ?? "10.0";
+      const sku = params.sku ?? "B1";
+
+      const apiOutputs = createDotNetApiTemplate({
+        tempDir: TEMP_DIR,
+        name,
+        resourceGroupName: rg.name,
+        location: params.location ?? "francecentral",
+        repoUrl: repoUrlExisting,
+        version,
+        sku,
+      });
+
+      exportedUrls[`${name}-url`] = apiOutputs.apiUrl;
+      exportedUrls[`${name}-repo-url`] = repoUrlExisting ?? params.repoName;
+      break;
+    }
+
+    default:
+      console.warn(`Type de ressource inconnu: ${type}`);
   }
 }
 

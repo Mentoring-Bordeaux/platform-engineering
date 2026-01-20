@@ -1,0 +1,23 @@
+template:
+  displayName: "Create .NET API and Deploy to Azure"
+  description: "Create a .NET Web API project, push it to a repository, and deploy it to Azure App Service with supporting resources (Key Vault, SQL, Log Analytics, App Insights)"
+  config:
+    repoName:
+      description: "GitHub repository name to use. If you also create a 'github' resource with the same repoName, the repo URL will be picked up automatically."
+      default: "my-dotnet-api"
+      required: true
+    repoUrl:
+      description: "Existing Git repository URL (e.g., https://github.com/org/repo.git). Use this if you are not creating a 'github' resource in the same project."
+      default: ""
+    location:
+      description: "Azure region for the resources"
+      default: "francecentral"
+    version:
+      description: ".NET version used by the App Service runtime"
+      default: "10.0"
+    sku:
+      description: "App Service Plan SKU (e.g., B1, S1)"
+      default: "B1"
+  metadata:
+    category: "apis"
+    framework: "dotnet"

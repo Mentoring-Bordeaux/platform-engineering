@@ -1,27 +1,73 @@
 @api_HostAddress = http://localhost:5064
 
+# Notes:
+# - If GitHubToken / GitHubOrganizationName are configured in api/appsettings*.json (or env vars), the API injects them into each resource's parameters.
+# - Parameter names must match what the Pulumi program expects (repoName, githubOrg, repoUrl, etc.).
+
+### GitHub repo + .NET API (repo created first, then used by dotnet-api)
 POST {{api_HostAddress}}/create-project
 Content-Type: application/json
 Accept: application/json
 
 {
-  "projectName": "my-sample-project",
+  "projectName": "MyProject",
+  "resources": [
+    {
+      "name": "myDotNetApi2",
+      "resourceType": "github",
+      "parameters": {
+        "repoName": "myDotNetApi2",
+        "isPrivate": "true",
+        "description": "Repo pour .NET API"
+      }
+    },
+    {
+      "name": "myDotNetApi2",
+      "resourceType": "dotnet-api",
+      "parameters": {
+        "repoName": "myDotNetApi2",
+        "version": "7.0",
+        "sku": "B1",
+        "location": "francecentral"
+      }
+    }
+  ]
+}
+
+### GitHub repo only
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+{
+  "projectName": "github-only-example",
   "resources": [
     {
       "name": "my-new-repo",
       "resourceType": "github",
       "parameters": {
-        "githubToken": "github_pat_XXXXXXXXXXXXXXXX",
-        "orgName": "",
+        "repoName": "my-new-repo",
+        "githubOrg": "",
         "isPrivate": "true",
         "description": "Repository created by Pulumi"
       }
-    },
+    }
+  ]
+}
+
+### Static Web App from an existing repo URL
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+{
+  "projectName": "swa-existing-repo-example",
+  "resources": [
     {
       "name": "my-static-site",
       "resourceType": "static-web-app",
       "parameters": {
-        "repositoryUrl": "https://github.com/yourorg/my-new-repo.git",
+        "repoUrl": "https://github.com/yourorg/my-new-repo.git",
         "branch": "main",
         "location": "westeurope"
       }
@@ -29,18 +75,18 @@ Accept: application/json
   ]
 }
 
+### App Service (Linux)
 POST {{api_HostAddress}}/create-project
 Content-Type: application/json
 Accept: application/json
 
 {
-  "projectName": "single-resource-example",
+  "projectName": "app-service-example",
   "resources": [
     {
       "name": "my-app-service",
       "resourceType": "app-service",
       "parameters": {
-        "resourceGroupName": "my-rg",
         "sku": "B1",
         "runtimeStack": "NODE",
         "location": "westeurope"

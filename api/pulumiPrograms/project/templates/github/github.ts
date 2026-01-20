@@ -11,9 +11,9 @@ export function createGithubRepo(
     if (!githubToken) {
         throw new Error("GitHubToken is required to create a repository");
     }
-    const githubProvider = new github.Provider("github-provider", {
+    const githubProvider = new github.Provider(`${name}-github-provider`, {
         token: githubToken,
-        owner: orgName, 
+        owner: orgName,
     });
 
     const repository = new github.Repository(name, {
@@ -26,13 +26,14 @@ export function createGithubRepo(
         autoInit: false,
     }, {
         provider: githubProvider,
-        retainOnDelete: true, 
+        retainOnDelete: true,
     });
 
- 
+
     return {
         repo: repository,
         repoNameOutput: repository.name,
         repoUrl: repository.htmlUrl,
+        provider: githubProvider,
     };
 }

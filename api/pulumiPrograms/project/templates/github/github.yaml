@@ -5,17 +5,19 @@ template:
     githubToken:
       description: "GitHub Token with repo permissions"
       secret: true
-    name:
+      required: true
+    repoName:
       description: "Name of the GitHub repository to create"
       default: "my-new-repo"
+      required: true
     description:
-      description: "Description of the GitHub repository (README)"
-      default: "This is my new repository created with Pulumi"
+      description: "Repository description"
+      default: "Managed by Pulumi Automation API."
     isPrivate:
       description: "Whether the repository should be private"
       default: true
-    orgName:
-      description: "GitHub Organization name (if creating under an org)"
+    githubOrg:
+      description: "GitHub organization/user. Leave empty to use the token's default owner."
       default: ""
   metadata:
     category: "repositories"
