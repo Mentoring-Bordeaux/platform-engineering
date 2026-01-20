@@ -46,7 +46,7 @@ RUN pnpm install --frozen-lockfile
 
 WORKDIR /pulumiPrograms
 COPY ./pulumiPrograms ./
-RUN find . -name "package.json" -not -path "./node_modules/*" -execdir pnpm install --frozen-lockfile \;
+RUN find . -name "package.json" -not -path "./node_modules/*" -exec sh -c 'cd "$(dirname "{}")" && pnpm install --frozen-lockfile' \;
 # # Install github subproject dependencies
 # WORKDIR /pulumiPrograms/platforms/github
 # COPY ./pulumiPrograms/platforms/github/package.json ./pulumiPrograms/platforms/github/pnpm-lock.yaml ./
