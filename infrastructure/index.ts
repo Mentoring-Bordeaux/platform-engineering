@@ -179,6 +179,10 @@ const backend = new containerapp.ContainerApp(
       ],
     },
     template: {
+      scale: {
+         minReplicas: 1,
+         maxReplicas: 1,
+      },
       containers: [
         {
           name: "api",
@@ -189,8 +193,8 @@ const backend = new containerapp.ContainerApp(
           },
           env: [
             {
-              name: "PULUMI_ACCESS_TOKEN", // ✅ variable dans le container
-              secretRef: "pulumi-access-token", // ✅ référence le secret "safe"
+              name: "PULUMI_ACCESS_TOKEN",
+              secretRef: "pulumi-access-token", 
             },
             {
               name: "GitHubToken",
