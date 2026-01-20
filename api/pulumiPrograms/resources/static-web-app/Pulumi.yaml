@@ -4,6 +4,7 @@ runtime:
   name: nodejs
   options:
     packagemanager: pnpm
+    nodeargs: --max-old-space-size=2048
 template:
   displayName: "Create Azure Static Web App"
   description: "A template for creating Azure Static Web Apps with Pulumi"
