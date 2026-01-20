@@ -211,17 +211,8 @@ const backend = new containerapp.ContainerApp(
             { name: "ARM_USE_MSI", 
                 value: "true" 
             },
-            { name: "AZURE_SUBSCRIPTION_ID", 
-                value: client.subscriptionId 
-            },
-            { name: "AZURE_TENANT_ID", 
-                value: client.tenantId 
-            },
             { name: "ARM_SUBSCRIPTION_ID", 
                 value: client.subscriptionId 
-            },
-            { name: "ARM_TENANT_ID", 
-                value: client.tenantId 
             },
           ],
         },
