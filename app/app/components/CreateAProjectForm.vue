@@ -169,7 +169,6 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
 
   if (!validation.success) {
     console.error('Form validation failed:', validation.error)
-
     return
   }
 
@@ -177,7 +176,6 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
 
   const presetKey = validation.data.preset as PresetKey
   const platformKey = validation.data.platform as PlatformKey
-
   const preset = PRESETS[presetKey]
 
   const projectData = {
@@ -186,7 +184,35 @@ async function onSubmit(event: FormSubmitEvent<CreateAProjectFormType>) {
     platform: PLATFORMS[platformKey]
   } satisfies ProjectOptions
 
-  projectStore.setProjectData(projectData)
-  router.push('/configure')
+  try {
+    // 1. POST /provision pour démarrer l’opération
+    const { operationId } = await $fetch('/provision', {
+      method: 'POST',
+      body: projectData,
+    })
+
+    // 2. Poll toutes les 2s jusqu’à succès ou erreur
+    while (true) {
+      const job = await $fetch(`/provision/${operationId}`)
+      if (job.status === 'Succeeded') {
+        // Afficher le succès + outputs
+        console.log('Provision succeeded:', job.outputs)
+        // Stocker les outputs si besoin
+        projectStore.setProjectData({ ...projectData, outputs: job.outputs })
+        // Rediriger ou afficher un message de succès
+        router.push('/configure')
+        break
+      }
+      if (job.status === 'Failed') {
+        // Afficher l’erreur
+        throw new Error(job.error)
+      }
+      await new Promise(r => setTimeout(r, 2000))
+    }
+  } catch (err) {
+    console.error('Provision error:', err)
+    // Afficher une notification d’erreur si besoin
+    // e.g. showErrorToast(err.message)
+  }
 }
 </script>
