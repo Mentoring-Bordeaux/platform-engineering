@@ -13,6 +13,7 @@
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+    <PackageReference Include="Octokit" Version="14.0.0" />
     <PackageReference Include="Pulumi.Automation" Version="3.91.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.11.1" />
 
