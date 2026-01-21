@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Text;
+using System.Diagnostics;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Pulumi.Automation;
 
@@ -8,6 +10,7 @@ public class PulumiService
 {
     private readonly ILogger<PulumiService> _logger;
 
+    private readonly IWebHostEnvironment _environment;
     private readonly IWebHostEnvironment _environment;
 
     private static string GetPulumiHome()
@@ -43,9 +46,18 @@ public class PulumiService
             .Replace('/', Path.DirectorySeparatorChar)
             .Trim(Path.DirectorySeparatorChar);
 
+
+        // The frontend encodes nested folders as `platforms//github`.
+        // Normalize to a real filesystem path segment (e.g. platforms\github).
+        var normalizedResourceType = resourceType
+            .Replace("//", Path.DirectorySeparatorChar.ToString())
+            .Replace('/', Path.DirectorySeparatorChar)
+            .Trim(Path.DirectorySeparatorChar);
+
         var workingDir = Path.Combine(
             Directory.GetCurrentDirectory(),
             "pulumiPrograms",
+            normalizedResourceType
             normalizedResourceType
         );
 
@@ -116,6 +128,75 @@ public class PulumiService
                 await stack.Workspace.InstallAsync();
             }
 
+            var pulumiProjectName = TryGetPulumiProjectName(workingDir);
+
+            string QualifyConfigKey(string key)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    return key;
+                }
+
+                // Already-qualified keys (e.g. aws:region) or Pulumi internal keys.
+                if (key.StartsWith("pulumi:", StringComparison.OrdinalIgnoreCase) || key.Contains(':'))
+                {
+                    return key;
+                }
+
+                // User config keys must be namespaced as "<project>:<key>".
+                if (!string.IsNullOrWhiteSpace(pulumiProjectName))
+                {
+                    return $"{pulumiProjectName}:{key}";
+                }
+
+                return key;
+            }
+
+            // GitHub template requires `name`; GitLab template requires `Name`.
+            // Setting both is safe and avoids template-specific branching.
+            await stack.SetConfigAsync(QualifyConfigKey("name"), new ConfigValue(request.Name));
+            await stack.SetConfigAsync(QualifyConfigKey("Name"), new ConfigValue(request.Name));
+
+            // Remove stale config keys from previous runs when they are not provided anymore.
+            // Pulumi stack config persists across updates, so an old value (e.g. an invalid gitlabBaseUrl)
+            // can keep breaking runs even after we stop injecting it.
+            var desiredKeys = request.Parameters.Keys
+                .Where(k => k != "type")
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            desiredKeys.Add("name");
+            desiredKeys.Add("Name");
+
+            var existingConfig = await stack.GetAllConfigAsync();
+            foreach (var existingKey in existingConfig.Keys)
+            {
+                // Keep Pulumi internal keys.
+                if (existingKey.StartsWith("pulumi:", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // Pulumi stores user config keys namespaced by project (e.g. "myproj:Name").
+                // Only compare the suffix ("Name") against desired keys.
+                string? keyPrefix = null;
+                var keySuffix = existingKey;
+                var colonIndex = existingKey.IndexOf(':');
+                if (colonIndex >= 0 && colonIndex < existingKey.Length - 1)
+                {
+                    keyPrefix = existingKey[..colonIndex];
+                    keySuffix = existingKey[(colonIndex + 1)..];
+                }
+
+                // Only clean keys in the current project namespace (avoid touching unrelated namespaces).
+                if (!string.IsNullOrWhiteSpace(pulumiProjectName) && keyPrefix != null && !keyPrefix.Equals(pulumiProjectName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!desiredKeys.Contains(keySuffix))
+                {
+                    await stack.RemoveConfigAsync(existingKey);
+                }
+            }
             var pulumiProjectName = TryGetPulumiProjectName(workingDir);
 
             string QualifyConfigKey(string key)
