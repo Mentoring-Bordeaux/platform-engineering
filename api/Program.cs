@@ -154,35 +154,6 @@ public class Program
         app.MapPost("/create-project", createProjectHandler);
         app.MapPost("/api/create-project", createProjectHandler);
 
-        app.MapPost("/provision", (TemplateRequest req, PulumiService pulumi, ILoggerFactory lf) =>
-{
-    var logger = lf.CreateLogger("Provision");
-    var id = ProvisionStore.Create();
-
-    _ = Task.Run(async () =>
-    {
-        try
-        {
-            var outputs = await pulumi.RunPulumiAsync(req);
-            ProvisionStore.Succeed(id, outputs);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Provision failed. operationId={OperationId}", id);
-            ProvisionStore.Fail(id, ex.Message); // plus tard: message user-friendly
-        }
-    });
-
-    return Results.Accepted($"/provision/{id}", new { operationId = id });
-});
-
-        app.MapGet("/provision/{id}", (string id) =>
-        {
-            return ProvisionStore.TryGet(id, out var job)
-                ? Results.Ok(job)
-                : Results.NotFound(new { message = "Unknown operationId" });
-        });
-
         app.Run();
     }
 
