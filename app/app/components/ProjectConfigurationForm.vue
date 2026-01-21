@@ -236,69 +236,95 @@ async function onSubmit() {
 
   console.log('Sending resources to API:', listRessources)
 
-  const { data, error } = await useFetch<RequestReponse[]>('/create-project', {
+  type JobStatus = 'Running' | 'Succeeded' | 'Failed'
+
+interface StartResponse {
+  operationId: string
+}
+
+interface JobResponse {
+  status: JobStatus
+  outputs?: RequestReponse[]
+  error?: string
+}
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+// 1) Start async provisioning (returns fast)
+const { data: startData, error: startError } = await useFetch<StartResponse>('/provision', {
+  server: false,
+  baseURL: config.public.apiBase,
+  method: 'POST',
+  body: listRessources,
+  watch: false
+})
+
+if (startError.value || !startData.value?.operationId) {
+  isLoading.value = false
+  openModal({
+    title: 'Error Creating Resources',
+    body: 'Failed to start provisioning. Please try again.'
+  })
+  return
+}
+
+const operationId = startData.value.operationId
+
+// 2) Poll status until finished
+let job: JobResponse | null = null
+
+for (let i = 0; i < 300; i++) { // 300 * 2s = 10 minutes max
+  const { data: jobData, error: jobError } = await useFetch<JobResponse>(`/provision/${operationId}`, {
     server: false,
     baseURL: config.public.apiBase,
-    method: 'POST',
-    body: listRessources,
+    method: 'GET',
     watch: false
   })
-  isLoading.value = false
 
-  if (error.value) {
-    console.error('Error creating repository:', error.value.data)
-
-    const title =
-      error.value.statusCode === 400
-        ? 'Invalid Configuration'
-        : 'Error Creating Resources'
-
-    if (!error.value.data) {
-      openModal({
-        title: title,
-        body: 'There was an unexpected error while creating your project resources. Please try again.'
-      })
-      return
-    }
-
-    if (!Array.isArray(error.value.data)) {
-      openModal({
-        title: title,
-        body:
-          error.value.data.message ||
-          'There was an unexpected error while creating your project resources. Please try again.'
-      })
-      return
-    }
-    const message = error.value.data
-      .map(
-        (err: RequestReponse) =>
-          `- ${err.message} to ${err.name} of type ${err.ressourceType}`
-      )
-      .join('\n')
-    openModal({
-      title: title,
-      body:
-        message ||
-        'There was an unexpected error while creating your project resources. Please try again.'
-    })
-    return
+  if (jobError.value) {
+    await sleep(2000)
+    continue
   }
-  if (data.value) {
-    const message = data.value
-      .map(
-        (data: RequestReponse) =>
-          `- ${data.name} of type ${data.ressourceType} created successfully. \n
-            ${data.outputs ? JSON.stringify(data.outputs) : ''}`
-      )
-      .join('\n')
-    console.log('Repository created successfully:', data.value)
-    openModal({
-      title: 'Your Project is Ready!',
-      body: `Ressources created successfully. ${message}`
-    })
-    return
+
+  job = jobData.value ?? null
+  if (!job || job.status === 'Running') {
+    await sleep(2000)
+    continue
   }
+
+  break
+}
+
+isLoading.value = false
+
+if (!job) {
+  openModal({
+    title: 'Error Creating Resources',
+    body: 'Provisioning status could not be retrieved. Please try again.'
+  })
+  return
+}
+
+if (job.status === 'Failed') {
+  openModal({
+    title: 'Error Creating Resources',
+    body: job.error || 'There was an unexpected error while creating your project resources.'
+  })
+  return
+}
+
+// 3) Success
+const message = (job.outputs ?? [])
+  .map(d => `- ${d.name} of type ${d.ressourceType} created successfully.\n${d.outputs ? JSON.stringify(d.outputs) : ''}`)
+  .join('\n')
+
+openModal({
+  title: 'Your Project is Ready!',
+  body: `Resources created successfully.\n${message}`
+})
+
 }
 
 function handleBackPress() {
