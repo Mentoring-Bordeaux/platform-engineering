@@ -19,9 +19,12 @@
     <PackageReference Include="Scalar.AspNetCore" Version="2.11.1" />
   </ItemGroup>
 
-  <!-- Copy all Pulumi program files to output directory -->
+  <!-- Copy Pulumi program sources to output directory (exclude generated folders like node_modules) -->
   <ItemGroup>
-    <None Include="pulumiPrograms\**\*">
+    <None
+      Include="pulumiPrograms\**\*"
+      Exclude="pulumiPrograms\**\node_modules\**\*;pulumiPrograms\**\bin\**\*;pulumiPrograms\**\obj\**\*;pulumiPrograms\**\.pulumi\**\*;pulumiPrograms\**\dist\**\*;pulumiPrograms\**\build\**\*"
+    >
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -29,5 +32,11 @@
   <!-- Exclude pulumiPrograms from default Content items -->
   <ItemGroup>
     <Content Remove="pulumiPrograms\**\*" />
+  </ItemGroup>
+
+  <!-- Make sure generated folders are never treated as items by SDK defaults -->
+  <ItemGroup>
+    <None Remove="pulumiPrograms\**\node_modules\**\*;pulumiPrograms\**\bin\**\*;pulumiPrograms\**\obj\**\*;pulumiPrograms\**\.pulumi\**\*;pulumiPrograms\**\dist\**\*;pulumiPrograms\**\build\**\*" />
+    <Content Remove="pulumiPrograms\**\node_modules\**\*;pulumiPrograms\**\bin\**\*;pulumiPrograms\**\obj\**\*;pulumiPrograms\**\.pulumi\**\*;pulumiPrograms\**\dist\**\*;pulumiPrograms\**\build\**\*" />
   </ItemGroup>
 </Project>

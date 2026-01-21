@@ -77,16 +77,26 @@ public class Program
 
                     // Inject GitHub credentials from configuration if available for all pulumi actions (generalization purpose)
                     string githubToken = app.Configuration["GitHubToken"] ?? "";
-                    string githubOrganizationName =
-                        app.Configuration["GitHubOrganizationName"] ?? "";
+                    string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
+                    string gitlabToken = app.Configuration["GitLabToken"] ?? "";
+                    string gitlabBaseUrl = app.Configuration["GitLabBaseUrl"] ?? "";
                     req.Parameters ??= new Dictionary<string, string>();
-                    if (!string.IsNullOrEmpty(githubToken))
+
+                    if (HasRealConfigValue(githubToken))
                     {
                         req.Parameters["githubToken"] = githubToken;
                     }
-                    if (!string.IsNullOrEmpty(githubOrganizationName))
+                    if (HasRealConfigValue(githubOrganizationName))
                     {
                         req.Parameters["githubOrganizationName"] = githubOrganizationName;
+                    }
+                    if (HasRealConfigValue(gitlabToken))
+                    {
+                        req.Parameters["gitlabToken"] = gitlabToken;
+                    }
+                    if (HasValidHttpUrl(gitlabBaseUrl))
+                    {
+                        req.Parameters["gitlabBaseUrl"] = gitlabBaseUrl;
                     }
 
                     IResult result = await pulumiService.ExecuteAsync(req);
@@ -105,6 +115,40 @@ public class Program
         );
 
         app.Run();
+    }
+
+    private static bool HasRealConfigValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        // Prevent common placeholder strings from being treated as real configuration.
+        // This avoids injecting invalid URLs (like "optional (self-hosted GitLab): ...") into Pulumi providers.
+        var trimmed = value.Trim();
+        var lower = trimmed.ToLowerInvariant();
+        if (lower.Contains("should be set") || lower.StartsWith("optional") || lower.Contains("replace_with"))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool HasValidHttpUrl(string? value)
+    {
+        if (!HasRealConfigValue(value))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
     }
 
     private static ResultPulumiAction? CreateResultForInputError(TemplateRequest request)

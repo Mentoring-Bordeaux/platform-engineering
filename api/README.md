@@ -18,6 +18,13 @@ dotnet user-secrets set "GitHubToken" "your_github_token_here"
 
 # Set your GitHub organization name
 dotnet user-secrets set "GitHubOrganizationName" "your_organization_name"
+
+# Set your GitLab token (PAT with `api` scope)
+dotnet user-secrets set "GitLabToken" "your_gitlab_token_here"
+
+# Optional: set GitLab API base URL (only for self-hosted GitLab)
+# Example: https://gitlab.example.com/api/v4
+dotnet user-secrets set "GitLabBaseUrl" "https://gitlab.example.com/api/v4"
 ```
 
 GitHub token requires the following Repository Permissions:

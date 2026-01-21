@@ -1,37 +1,48 @@
 @api_HostAddress = http://localhost:5064
 
-POST {{api_HostAddress}}/create-repo
+### Create a GitHub repository (platform)
+POST {{api_HostAddress}}/create-project
 Content-Type: application/json
 Accept: application/json
 
-{
-    "RepoName": "new-pulumi-repo",
-    "Private": true,
-    "Description": "The description in the README of the repo", //Optionnal
-}
-
-POST {{api_HostAddress}}/create-staticweb
-Content-Type: application/json
-Accept: application/json
-
-{
-    "Name":"nomenminiscule" // NO SPECIAL CHAR OR MAJ
-}
-
-
-POST {{api_HostAddress}}/create-ressource
-Content-Type: application/json
-Accept: application/json
-
-{
-    "Name": "my-ressorce",
-    "Parameters": {
-        "type": "ressource type",
-        "parameter1": "parameter",
-        "parameter2": "parameter",
-        "parameter": "parameter"
+[
+    {
+        "name": "my-github-repo",
+        "resourceType": "platforms//github",
+        "parameters": {
+            "description": "Repo created via Pulumi",
+            "isPrivate": "true"
+        }
     }
-}
+]
 
+### Create a GitLab repository (platform)
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+[
+    {
+        "name": "my-gitlab-project",
+        "resourceType": "platforms//gitlab",
+        "parameters": {
+            "description": "Project created via Pulumi",
+            "isPrivate": "true"
+        }
+    }
+]
+
+### Create a static web app (resource)
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+[
+    {
+        "name": "nomenminiscule",
+        "resourceType": "resources//static-web-app",
+        "parameters": {}
+    }
+]
 
 ###
