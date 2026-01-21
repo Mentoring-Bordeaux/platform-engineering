@@ -1,0 +1,30 @@
+name: create-gitlab-project
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+template:
+  displayName: "Create GitLab Project"
+  description: "A template for creating GitLab projects (repositories) with Pulumi"
+  config:
+    gitlabToken:
+      description: "GitLab Token with api scope"
+      secret: true
+    Name:
+      description: "Name of the GitLab project to create"
+      default: "my-new-project"
+    description:
+      description: "Description of the GitLab project"
+      default: "This project was created with Pulumi"
+    isPrivate:
+      description: "Whether the project should be private"
+      default: true
+    namespaceId:
+      description: "Optional numeric namespace/group ID where to create the project"
+      default: ""
+    gitlabBaseUrl:
+      description: "Optional GitLab API base URL for self-hosted instances (e.g. https://gitlab.example.com/api/v4)"
+      default: ""
+  metadata:
+    category: "repositories"
+    framework: "gitlab"

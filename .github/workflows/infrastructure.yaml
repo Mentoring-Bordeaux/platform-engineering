@@ -75,4 +75,4 @@ jobs:
         with:
           name: infra-outputs
           path: infrastructure/infra.outputs.env
-          retention-days: 3
+          retention-days: 90
