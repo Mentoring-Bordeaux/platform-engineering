@@ -88,10 +88,6 @@ const raKvSecretsOfficerForPulumi = new authorization.RoleAssignment(
     principalId: client.objectId, // the identity running Pulumi (az login / SPN)
     roleDefinitionId: pulumi.interpolate`/providers/Microsoft.Authorization/roleDefinitions/${keyVaultSecretsOfficerRoleDefinitionId}`,
     scope: vault.id,
-    // If you're running via az login: "User"
-    // If you're running via SPN/OIDC: "ServicePrincipal"
-    // You can keep it as "User" if you run locally; set it to "ServicePrincipal" in CI.
-    principalType: "User",
   },
 );
 
