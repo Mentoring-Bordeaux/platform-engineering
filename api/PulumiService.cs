@@ -135,13 +135,10 @@ public class PulumiService
 
                 return key;
             }
-<<<<<<< HEAD
             // Configurate the stack with parameters from the request (excluding "type")
             foreach (var kv in request.Parameters.Where(kv => kv.Key != "type"))
                 await stack.SetConfigAsync(QualifyConfigKey(kv.Key), new ConfigValue(kv.Value));
 
-=======
->>>>>>> origin/main
 
             // GitHub template requires `name`; GitLab template requires `Name`.
             // Setting both is safe and avoids template-specific branching.
@@ -189,13 +186,6 @@ public class PulumiService
                 }
             }
 
-<<<<<<< HEAD
-=======
-            // Configurate the stack with parameters from the request (excluding "type")
-            foreach (var kv in request.Parameters.Where(kv => kv.Key != "type"))
-                await stack.SetConfigAsync(QualifyConfigKey(kv.Key), new ConfigValue(kv.Value));
->>>>>>> origin/main
-            
             var result = await stack.UpAsync(
                 new UpOptions
                 {
