@@ -141,10 +141,10 @@ const backend = new containerapp.ContainerApp(
     resourceGroupName: rg.name,
     managedEnvironmentId: env.id,
     identity: {
-      type: "SystemAssigned, UserAssigned",
-      userAssignedIdentities: identity.id.apply(id => ({
+    type: "SystemAssigned, UserAssigned",
+    userAssignedIdentities: identity.id.apply(id => ({
         [id]: {},
-      })) as any,
+    })) as any,
     },
 
     configuration: {
@@ -184,8 +184,8 @@ const backend = new containerapp.ContainerApp(
     },
     template: {
       scale: {
-        minReplicas: 1,
-        maxReplicas: 1,
+         minReplicas: 1,
+         maxReplicas: 1,
       },
       containers: [
         {
@@ -198,7 +198,7 @@ const backend = new containerapp.ContainerApp(
           env: [
             {
               name: "PULUMI_ACCESS_TOKEN",
-              secretRef: "pulumi-access-token",
+              secretRef: "pulumi-access-token", 
             },
             {
               name: "GitHubToken",
@@ -212,28 +212,23 @@ const backend = new containerapp.ContainerApp(
               name: "GitHubOrganizationName",
               secretRef: "github-organization-name",
             },
-            {
-              name: "ARM_USE_MSI",
-              value: "true"
+            { name: "ARM_USE_MSI", 
+                value: "true" 
             },
-            {
-              name: "ARM_SUBSCRIPTION_ID",
-              value: client.subscriptionId
+            { name: "ARM_SUBSCRIPTION_ID", 
+                value: client.subscriptionId 
             },
-            {
-              name: "NuxtAppUrl",
-              value: staticApp.defaultHostname
+            { name: "NuxtAppUrl", 
+                value: staticApp.defaultHostname
             },
           ],
         },
       ],
     },
   },
-  {
-    dependsOn: [roleAssignment, // ACR pull
+  { dependsOn: [roleAssignment, // ACR pull
       roleAssignmentKvSecretsUser, // UAI can read secrets
-    ]
-  },
+] },
 );
 
 // --- RBAC pour que Pulumi (MSI System Assigned) puisse créer/lire des Resource Groups ---
