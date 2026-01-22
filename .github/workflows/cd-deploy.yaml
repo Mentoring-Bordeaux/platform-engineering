@@ -1,0 +1,144 @@
+name: cd-deploy
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["ci-build"]
+    types:
+      - completed
+env:
+  APP_LOCATION: "app/.output/public"
+
+concurrency:
+  group: ${{ github.ref }}-cd-deploy
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  actions: write
+
+jobs:
+  download_infra_outputs:
+    # CHANGE: Check 'workflow_run.event' to filter out PR builds
+    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request') || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    outputs:
+      ACR_LOGIN_SERVER: ${{ steps.load_infra.outputs.ACR_LOGIN_SERVER }}
+      ACR_NAME: ${{ steps.load_infra.outputs.ACR_NAME }}
+      ACR_REGISTRY_NAME: ${{ steps.load_infra.outputs.ACR_REGISTRY_NAME }}
+      RG: ${{ steps.load_infra.outputs.RG }}
+      STATIC_WEB_APP_URL: ${{ steps.load_infra.outputs.STATIC_WEB_APP_URL }}
+      STATIC_WEB_APP_NAME: ${{ steps.load_infra.outputs.STATIC_WEB_APP_NAME }}
+      infra_loaded: ${{ steps.load_infra.outputs.infra_loaded }}
+    steps:
+      - name: Download infra outputs
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: infrastructure.yaml
+          workflow_conclusion: success
+          name: infra-outputs
+          path: infrastructure
+      - name: Load infra outputs
+        id: load_infra
+        shell: bash
+        run: |
+          if [ ! -f infrastructure/infra.outputs.env ]; then
+            echo "::error::Missing infra.outputs.env. Run Infrastructure at least once on this branch."
+            exit 1
+          fi
+          set -a; source infrastructure/infra.outputs.env; set +a
+          # Expect key 'acrServer' from Pulumi outputs
+          if [ -z "${acrServer:-}" ]; then
+            echo "::error::acrServer not found in infra.outputs.env"
+            echo "Contents:"; cat infrastructure/infra.outputs.env || true
+            exit 1
+          fi
+
+          echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_OUTPUT
+          echo "ACR_NAME=$containerAppName" >> $GITHUB_OUTPUT
+          echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_OUTPUT
+          echo "RG=$resourceGroupName" >> $GITHUB_OUTPUT
+          echo "STATIC_WEB_APP_URL=$staticWebUrl" >> $GITHUB_OUTPUT
+          echo "STATIC_WEB_APP_NAME=$staticWebAppName" >> $GITHUB_OUTPUT
+          echo "infra_loaded=true" >> $GITHUB_OUTPUT
+
+
+  deploy-api-aca:
+    environment: development
+    needs: download_infra_outputs
+    if: needs.download_infra_outputs.outputs.infra_loaded == 'true'
+    env:
+      RG:               ${{ needs.download_infra_outputs.outputs.RG }}
+      ACR_NAME:         ${{ needs.download_infra_outputs.outputs.ACR_NAME }}
+      ACR_LOGIN_SERVER: ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure Container Apps
+        shell: bash
+        run: |
+          # Deploy image and bind app env vars (tokens via secretref + non-sensitive config values).
+          az containerapp update \
+            --name "${ACR_NAME}" \
+            --resource-group "${RG}" \
+            --image "${ACR_LOGIN_SERVER}/platform-engineering-api:latest"
+
+  deploy-frontend-webapp:
+    environment: development
+    needs: download_infra_outputs
+    env:
+      RG: ${{ needs.download_infra_outputs.outputs.RG }}
+      STATIC_WEB_APP_NAME: ${{ needs.download_infra_outputs.outputs.STATIC_WEB_APP_NAME }}
+    permissions:
+      contents: read 
+      pull-requests: write 
+      id-token: write # Required for azure/login
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # NEW: Login to Azure to fetch secrets
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # NEW: Fetch the token securely
+      - name: Get SWA Deployment Token
+        id: get_token
+        run: |
+          TOKEN=$(az staticwebapp secrets list --name ${{ env.STATIC_WEB_APP_NAME }} --resource-group ${{ env.RG }} --query "properties.apiKey" -o tsv)
+          echo "::add-mask::$TOKEN"
+          echo "SWA_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Download Nuxt build artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: ci-build.yaml
+          workflow_conclusion: success
+          name: nuxt-output
+          path: app/.output
+          branch: ${{ github.ref_name }}
+          if_no_artifact_found: fail
+
+      - name: Deploy to Azure Static Web App
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          # CHANGE: Use the securely fetched token
+          azure_static_web_apps_api_token: ${{ steps.get_token.outputs.SWA_TOKEN }} 
+          action: "upload"
+          app_location: ${{ env.APP_LOCATION }}
+          skip_app_build: true
+          skip_api_build: true

@@ -14,6 +14,10 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2025-01-15',
 
+  nitro: {
+    static: true
+  },
+
   eslint: {
     config: {
       stylistic: {
@@ -25,7 +29,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       // URL of the API server in .NET
-      apiBase: process.env.NUXT_API_URL
+      apiBase: process.env.NUXT_API_URL || '/api'
     }
   }
 })

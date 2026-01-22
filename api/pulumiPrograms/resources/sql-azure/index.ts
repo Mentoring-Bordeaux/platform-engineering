@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 
 const config = new pulumi.Config();
-const name = config.require("Name");
+const name = config.require("name");
 const location = config.get("location") || "westeurope";
 const adminLogin = config.require("adminLogin");
 const adminPassword = config.require("adminPassword");

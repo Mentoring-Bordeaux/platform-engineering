@@ -1,14 +1,5 @@
-using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using OneOf.Types;
 using Scalar.AspNetCore;
 
 public class Program
@@ -17,7 +8,10 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        string nuxtAppUrl = builder.Configuration["NuxtAppUrl"] ?? "http://localhost:3001";
+        string nuxtAppUrl =
+            builder.Configuration["services:app:http:0"]
+            ?? builder.Configuration["NuxtAppUrl"]
+            ?? "http://localhost:3000";
 
         // Configure CORS
         builder.Services.AddCors(options =>
@@ -26,7 +20,16 @@ public class Program
                 "NuxtPolicy",
                 policy =>
                 {
-                    policy.WithOrigins(nuxtAppUrl).AllowAnyHeader().AllowAnyMethod();
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        // In development, allow any origin for convenience during local testing
+                        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+                    }
+                    else
+                    {
+                        // In production, strictly allow only the configured Nuxt app origin
+                        policy.WithOrigins(nuxtAppUrl).AllowAnyHeader().AllowAnyMethod();
+                    }
                 }
             );
         });
@@ -53,21 +56,18 @@ public class Program
 
         app.UseHttpsRedirection();
 
-        // Déplacez les définitions de classes/méthodes avant l'utilisation des endpoints si possible
-        // ou maintenez-les dans la classe Program comme ci-dessous.
-
-        app.MapPost(
-            "/create-project",
-            async (
-                TemplateRequest[] request,
-                PulumiService pulumiService,
-                ILogger<Program> logger
-            ) =>
+        var createProjectHandler = async (
+            TemplateRequest[] request,
+            PulumiService pulumiService,
+            ILogger<Program> logger
+        ) =>
+        {
+            try
             {
                 List<ResultPulumiAction> results = new List<ResultPulumiAction>();
                 foreach (TemplateRequest req in request)
                 {
-                    ResultPulumiAction? actionResult = createResultForInputError(req);
+                    ResultPulumiAction? actionResult = CreateResultForInputError(req);
 
                     if (actionResult != null)
                     {
@@ -77,21 +77,31 @@ public class Program
 
                     // Inject GitHub credentials from configuration if available for all pulumi actions (generalization purpose)
                     string githubToken = app.Configuration["GitHubToken"] ?? "";
-                    string githubOrganizationName =
-                        app.Configuration["GitHubOrganizationName"] ?? "";
+                    string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
+                    string gitlabToken = app.Configuration["GitLabToken"] ?? "";
+                    string gitlabBaseUrl = app.Configuration["GitLabBaseUrl"] ?? "";
                     req.Parameters ??= new Dictionary<string, string>();
-                    if (!string.IsNullOrEmpty(githubToken))
+
+                    if (HasRealConfigValue(githubToken))
                     {
                         req.Parameters["githubToken"] = githubToken;
                     }
-                    if (!string.IsNullOrEmpty(githubOrganizationName))
+                    if (HasRealConfigValue(githubOrganizationName))
                     {
                         req.Parameters["githubOrganizationName"] = githubOrganizationName;
+                    }
+                    if (HasRealConfigValue(gitlabToken))
+                    {
+                        req.Parameters["gitlabToken"] = gitlabToken;
+                    }
+                    if (HasValidHttpUrl(gitlabBaseUrl))
+                    {
+                        req.Parameters["gitlabBaseUrl"] = gitlabBaseUrl;
                     }
 
                     IResult result = await pulumiService.ExecuteAsync(req);
 
-                    actionResult = treatResult(result, req.Name, req.ResourceType, logger);
+                    actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
 
                     if (actionResult.StatusCode >= 400)
                     {
@@ -99,15 +109,64 @@ public class Program
                     }
                     results.Add(actionResult);
                 }
-
+                
                 return Results.Ok(results);
             }
-        );
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unhandled exception in createProjectHandler: {Message}", ex.Message);
+                return Results.Json(new ResultPulumiAction
+                {
+                    Name = "",
+                    ResourceType = "",
+                    StatusCode = 500,
+                    Message = $"Internal server error: {ex.Message}",
+                }, statusCode: 500);
+            }
+        };
+
+        // Azure Static Web Apps proxies backend requests via the fixed /api prefix.
+        app.MapPost("/create-project", createProjectHandler);
+        app.MapPost("/api/create-project", createProjectHandler);
 
         app.Run();
     }
 
-    private static ResultPulumiAction? createResultForInputError(TemplateRequest request)
+    private static bool HasRealConfigValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        // Prevent common placeholder strings from being treated as real configuration.
+        // This avoids injecting invalid URLs (like "optional (self-hosted GitLab): ...") into Pulumi providers.
+        var trimmed = value.Trim();
+        var lower = trimmed.ToLowerInvariant();
+        if (lower.Contains("should be set") || lower.StartsWith("optional") || lower.Contains("replace_with"))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool HasValidHttpUrl(string? value)
+    {
+        if (!HasRealConfigValue(value))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
+    }
+
+    private static ResultPulumiAction? CreateResultForInputError(TemplateRequest request)
     {
         if (request == null)
         {
@@ -138,7 +197,7 @@ public class Program
                 Name = request.Name,
                 ResourceType = "NotSpecified",
                 StatusCode = 400,
-                Message = "Missing 'type' parameter",
+                Message = "Missing 'resourceType' parameter",
             };
         }
 
@@ -146,7 +205,7 @@ public class Program
         return null;
     }
 
-    private static ResultPulumiAction treatResult(
+    private static ResultPulumiAction ProcessResult(
         IResult result,
         string name,
         string resourceType,
@@ -155,7 +214,11 @@ public class Program
     {
         if (result is JsonHttpResult<Dictionary<string, object>> jsonResult)
         {
-            Console.WriteLine("Resource created successfully of resource type: " + resourceType);   
+            log.LogInformation(
+                "Resource created successfully: {Name} of {ResourceType}",
+                name,
+                resourceType
+            );
             return new ResultPulumiAction
             {
                 Name = name,

@@ -13,7 +13,7 @@ importers:
         version: 3.12.1(typescript@5.9.3)
       '@pulumi/pulumi':
         specifier: ^3.0.0
-        version: 3.215.0(typescript@5.9.3)
+        version: 3.216.0(typescript@5.9.3)
     devDependencies:
       '@types/node':
         specifier: ^18
@@ -218,8 +218,8 @@ packages:
   '@pulumi/azure-native@3.12.1':
     resolution: {integrity: sha512-q7KvpZqCs8Uev9nZEuBPNcx50wMF8WLmfA8Rk8GQmyBBFA7OFgOYKWetM0DyKDiDLCBgtHctF6tCgu8T1AKJ0A==}
 
-  '@pulumi/pulumi@3.215.0':
-    resolution: {integrity: sha512-Q4yx/CUyyX8iHRGS4OpUNdS8ZxRnGRADsh6XrqBfqXzrWOd2K3SIivVPDwCKgcIFpHm/WgN6UTSYba0m7aLmjw==}
+  '@pulumi/pulumi@3.216.0':
+    resolution: {integrity: sha512-trrYuGE76HirIpA8McuomXNSkkccQyQajP9ZNLd0WHqnxXstTjRR+Zxizwo/0NJ3/HTUsA7wJE1Qt5auf7jL2g==}
     engines: {node: '>=20'}
     peerDependencies:
       ts-node: '>= 7.0.1 < 12'
@@ -980,6 +980,7 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me
 
   tmp@0.2.5:
     resolution: {integrity: sha512-voyz6MApa1rQGUxT3E+BK7/ROe8itEx7vD8/HEvt4xwXucvQ5G5oeEiHkmHZJuBO21RpOf+YYm9MOivj709jow==}
@@ -1333,14 +1334,14 @@ snapshots:
 
   '@pulumi/azure-native@3.12.1(typescript@5.9.3)':
     dependencies:
-      '@pulumi/pulumi': 3.215.0(typescript@5.9.3)
+      '@pulumi/pulumi': 3.216.0(typescript@5.9.3)
     transitivePeerDependencies:
       - bluebird
       - supports-color
       - ts-node
       - typescript
 
-  '@pulumi/pulumi@3.215.0(typescript@5.9.3)':
+  '@pulumi/pulumi@3.216.0(typescript@5.9.3)':
     dependencies:
       '@grpc/grpc-js': 1.14.3
       '@logdna/tail-file': 2.2.0

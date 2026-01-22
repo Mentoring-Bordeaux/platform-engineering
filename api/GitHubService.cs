@@ -134,9 +134,13 @@ public class GitHubService
         parameters["Name"] = Name;
         if (!Directory.Exists(localPulumiPath))
             throw new DirectoryNotFoundException(localPulumiPath);
+        var allFiles = Directory.GetFiles(localPulumiPath, "*", SearchOption.AllDirectories)
+        .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}node_modules{Path.DirectorySeparatorChar}") &&
+                    !f.Contains($"{Path.DirectorySeparatorChar}node_modules"));
 
-        foreach (var filePath in Directory.GetFiles(localPulumiPath, "*", SearchOption.AllDirectories))
+        foreach (var filePath in allFiles)
         {
+
             var relativePath = Path
             .Combine("infrastructure", Path.GetRelativePath(localPulumiPath, filePath))
             .Replace("\\", "/");

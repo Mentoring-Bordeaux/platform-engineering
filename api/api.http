@@ -1,23 +1,47 @@
 @api_HostAddress = https://localhost:5064
 
-# L'API expose un seul endpoint:
-#   POST /create-project
-# Le body doit être un TABLEAU de TemplateRequest.
-# IMPORTANT: `parameters` est un Dictionary<string,string> => toutes les valeurs doivent être des STRINGS.
-
-### Create GitHub repo (Pulumi: pulumiPrograms/platforms/github)
+### Create a GitHub repository (platform)
 POST {{api_HostAddress}}/create-project
 Content-Type: application/json
 Accept: application/json
 
 [
     {
-        "name": "new-pulumi-repo",
-        "resourceType": "platforms/github",
+        "name": "my-github-repo",
+        "resourceType": "platforms//github",
         "parameters": {
-            "isPrivate": "true",
-            "description": "The description in the README of the repo"
+            "description": "Repo created via Pulumi",
+            "isPrivate": "true"
         }
+    }
+]
+
+### Create a GitLab repository (platform)
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+[
+    {
+        "name": "my-gitlab-project",
+        "resourceType": "platforms//gitlab",
+        "parameters": {
+            "description": "Project created via Pulumi",
+            "isPrivate": "true"
+        }
+    }
+]
+
+### Create a static web app (resource)
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+[
+    {
+        "name": "nomenminiscule",
+        "resourceType": "resources//static-web-app",
+        "parameters": {}
     }
 ]
 

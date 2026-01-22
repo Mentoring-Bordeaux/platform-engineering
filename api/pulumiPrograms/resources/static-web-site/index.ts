@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 
 const config = new pulumi.Config();
-const projectPrefix = config.require("Name");
+const projectPrefix = config.require("name");
 
 const projectPrefixFormated = projectPrefix.toLowerCase()
 

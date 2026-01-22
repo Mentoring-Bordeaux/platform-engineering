@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -16,7 +15,26 @@
     <PackageReference Include="Octokit" Version="14.0.0" />
     <PackageReference Include="Pulumi.Automation" Version="3.91.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.11.1" />
-
   </ItemGroup>
 
+  <!-- Copy Pulumi program sources to output directory (exclude generated folders like node_modules) -->
+  <ItemGroup>
+    <None
+      Include="pulumiPrograms\**\*"
+      Exclude="pulumiPrograms\**\node_modules\**\*;pulumiPrograms\**\bin\**\*;pulumiPrograms\**\obj\**\*;pulumiPrograms\**\.pulumi\**\*;pulumiPrograms\**\dist\**\*;pulumiPrograms\**\build\**\*"
+    >
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Exclude pulumiPrograms from default Content items -->
+  <ItemGroup>
+    <Content Remove="pulumiPrograms\**\*" />
+  </ItemGroup>
+
+  <!-- Make sure generated folders are never treated as items by SDK defaults -->
+  <ItemGroup>
+    <None Remove="pulumiPrograms\**\node_modules\**\*;pulumiPrograms\**\bin\**\*;pulumiPrograms\**\obj\**\*;pulumiPrograms\**\.pulumi\**\*;pulumiPrograms\**\dist\**\*;pulumiPrograms\**\build\**\*" />
+    <Content Remove="pulumiPrograms\**\node_modules\**\*;pulumiPrograms\**\bin\**\*;pulumiPrograms\**\obj\**\*;pulumiPrograms\**\.pulumi\**\*;pulumiPrograms\**\dist\**\*;pulumiPrograms\**\build\**\*" />
+  </ItemGroup>
 </Project>

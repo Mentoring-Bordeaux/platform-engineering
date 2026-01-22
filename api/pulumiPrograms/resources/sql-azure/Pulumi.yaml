@@ -9,7 +9,7 @@ template:
   displayName: "Create Azure SQL Database"
   description: "A template for creating Azure SQL Databases with Pulumi"
   config:
-    appName:
+    name:
       type: string
       description: "Name of the SQL Database"
     location:

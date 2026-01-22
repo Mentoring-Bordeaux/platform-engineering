@@ -1,0 +1,17 @@
+{
+  "name": "gitlab",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "private": true,
+  "packageManager": "pnpm@10.18.2",
+  "dependencies": {
+    "@pulumi/gitlab": "*",
+    "@pulumi/pulumi": "*"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "typescript": "*",
+    "ts-node": "*"
+  }
+}
