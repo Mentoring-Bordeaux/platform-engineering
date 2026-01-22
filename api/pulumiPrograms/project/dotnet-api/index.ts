@@ -16,38 +16,38 @@ const resourceGroup = new azure.resources.ResourceGroup(`${name}-rg`, {
 
 const clientConfig = azure.authorization.getClientConfig();
 
-// const kv = new azure.keyvault.Vault(`${name}-kv`, {
-//     resourceGroupName: resourceGroup.name,
-//     location,
-//     properties: {
-//         sku: { family: "A", name: "standard" },
-//         tenantId: clientConfig.then(c => c.tenantId),
-//         accessPolicies: [],
-//         enableSoftDelete: true,
-//     },
-// });
+const kv = new azure.keyvault.Vault(`${name}-kv`, {
+    resourceGroupName: resourceGroup.name,
+    location,
+    properties: {
+        sku: { family: "A", name: "standard" },
+        tenantId: clientConfig.then(c => c.tenantId),
+        accessPolicies: [],
+        enableSoftDelete: true,
+    },
+});
 
-// const sqlServer = new azure.sql.Server(`${name}-sqlserver`, {
-//     resourceGroupName: resourceGroup.name,
-//     location,
-//     administratorLogin: adminLogin,
-//     administratorLoginPassword: adminPassword,
-//     version: "12.0",
-// });
+const sqlServer = new azure.sql.Server(`${name}-sqlserver`, {
+    resourceGroupName: resourceGroup.name,
+    location,
+    administratorLogin: adminLogin,
+    administratorLoginPassword: adminPassword,
+    version: "12.0",
+});
 
-// const database = new azure.sql.Database(`${name}-db`, {
-//     resourceGroupName: resourceGroup.name,
-//     location,
-//     serverName: sqlServer.name,
-//     sku: { name: "S0", tier: "Standard" },
-// });
+const database = new azure.sql.Database(`${name}-db`, {
+    resourceGroupName: resourceGroup.name,
+    location,
+    serverName: sqlServer.name,
+    sku: { name: "S0", tier: "Standard" },
+});
 
-// const logWorkspace = new azure.operationalinsights.Workspace(`${name}-law`, {
-//     resourceGroupName: resourceGroup.name,
-//     location,
-//     sku: { name: "PerGB2018" },
-//     retentionInDays: 30,
-// });
+const logWorkspace = new azure.operationalinsights.Workspace(`${name}-law`, {
+    resourceGroupName: resourceGroup.name,
+    location,
+    sku: { name: "PerGB2018" },
+    retentionInDays: 30,
+});
 
 
 const appServicePlan = new azure.web.AppServicePlan(`${name}-plan`, {

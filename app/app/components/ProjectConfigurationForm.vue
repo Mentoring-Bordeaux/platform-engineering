@@ -25,13 +25,8 @@
     <!-- Resource Configurations -->
     <FormSection
       v-for="(resource, index) in resources"
-<<<<<<< HEAD
-      :key="`resource-${resource.resourceType}-${index}`"
-      :title="`${resource.resourceType} Configuration`"
-=======
       :key="`resource-${resource.type}-${index}`"
       :title="`${resource.type} Configuration`"
->>>>>>> origin/main
     >
       <UFormField
         :name="`resources.${index}.name`"
@@ -61,17 +56,10 @@
     </FormSection>
 
     <!-- Platform Configuration -->
-<<<<<<< HEAD
-    <FormSection :title="`${platform.platformType} Configuration`">
-      <UFormField
-        name="platform.name"
-        label="Platform Name"
-=======
     <FormSection :title="`${platform.type} Configuration`">
       <UFormField
         name="platform.name"
         label="Repository Name"
->>>>>>> origin/main
         required
       >
         <UInput
@@ -82,11 +70,7 @@
       </UFormField>
       <UFormField
         v-for="(configOption, configKey) in platform.config"
-<<<<<<< HEAD
-        :key="`platform-${platform.platformType}-${configOption.label}-${configKey}`"
-=======
         :key="`platform-${platform.type}-${configOption.label}-${configKey}`"
->>>>>>> origin/main
         :name="`platform.config.${configKey}`"
         :label="configOption.label"
         :required="configOption.required || false"
@@ -160,20 +144,12 @@ interface ConfigurationFormState {
 const state = ref<ConfigurationFormState>({
   resources: resources.value.map(resource => ({
     name: '',
-<<<<<<< HEAD
-    resourceType: resource.resourceType,
-=======
     type: resource.type,
->>>>>>> origin/main
     config: generateDefaultConfig(resource.config)
   })),
   platform: {
     name: '',
-<<<<<<< HEAD
-    platformType: platform.value.platformType,
-=======
     type: platform.value.type,
->>>>>>> origin/main
     config: generateDefaultConfig(platform.value.config)
   }
 })
@@ -236,11 +212,7 @@ async function onSubmit() {
     (resource): RequestElementTemplate => {
       return {
         name: resource.name,
-<<<<<<< HEAD
-        resourceType: 'resources//' + formatResourceType(resource.resourceType),
-=======
         resourceType: 'resources//' + formatResourceType(resource.type),
->>>>>>> origin/main
         parameters: Object.fromEntries(
           Object.entries(resource.config).map(([key, value]) => [
             key,
@@ -253,12 +225,7 @@ async function onSubmit() {
 
   listRessources.push({
     name: state.value.platform.name,
-<<<<<<< HEAD
-    resourceType:
-      'platforms//' + formatResourceType(state.value.platform.platformType),
-=======
     resourceType: 'platforms//' + formatResourceType(state.value.platform.type),
->>>>>>> origin/main
     parameters: Object.fromEntries(
       Object.entries(state.value.platform.config).map(([key, value]) => [
         key,
