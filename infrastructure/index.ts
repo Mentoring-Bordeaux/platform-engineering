@@ -265,7 +265,7 @@ const staticWebAppSecrets = web.listStaticSiteSecretsOutput({
   resourceGroupName: rg.name,
 });
 
-export const staticWebAppDeploymentToken = staticWebAppSecrets.apply(
+const staticWebAppDeploymentToken = staticWebAppSecrets.apply(
   (secrets) => (secrets.properties ? secrets.properties["apiKey"] : undefined),
 );
 
