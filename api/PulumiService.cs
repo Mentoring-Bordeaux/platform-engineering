@@ -10,6 +10,14 @@ public class PulumiService
 
     private readonly IWebHostEnvironment _environment;
 
+    private static string GetPulumiHome()
+    {
+        // Pulumi stores plugins in $PULUMI_HOME/plugins (defaults to ~/.pulumi).
+        // In containers the non-root user may not have a usable HOME, which causes
+        // Pulumi to fail to locate language plugins like pulumi-language-nodejs.
+        return Path.Combine(Directory.GetCurrentDirectory(), ".pulumi");
+    }
+
     public PulumiService(ILogger<PulumiService> logger, IWebHostEnvironment environment)
     {
         _logger = logger;
@@ -18,6 +26,10 @@ public class PulumiService
 
     public async Task<IResult> ExecuteAsync(TemplateRequest request)
     {
+        // Pulumi environment variables are set per-process in RunCommandAsync to avoid global state/race conditions.
+        var pulumiHome = GetPulumiHome();
+        Directory.CreateDirectory(pulumiHome);
+
         string resourceType = request.ResourceType;
 
         // The frontend encodes nested folders as `platforms//github`.
@@ -83,6 +95,7 @@ public class PulumiService
                     return Results.Problem(
                         detail:
                             "Pulumi dependencies install failed. Ensure Pulumi CLI is installed, and the selected packagemanager (pnpm/npm) is available.\n"
+                            + "If you see 'no language plugin pulumi-language-nodejs', ensure the bundled language host binary (pulumi-language-nodejs) is available on PATH (typically by installing Pulumi correctly inside the container/image).\n"
                             + installResult.StandardError,
                         statusCode: 500
                     );
@@ -172,7 +185,7 @@ public class PulumiService
             // Configurate the stack with parameters from the request (excluding "type")
             foreach (var kv in request.Parameters.Where(kv => kv.Key != "type"))
                 await stack.SetConfigAsync(QualifyConfigKey(kv.Key), new ConfigValue(kv.Value));
-
+            
             var result = await stack.UpAsync(
                 new UpOptions
                 {
@@ -225,6 +238,9 @@ public class PulumiService
         string workingDirectory
     )
     {
+        var pulumiHome = GetPulumiHome();
+        Directory.CreateDirectory(pulumiHome);
+
         var startInfo = new ProcessStartInfo
         {
             FileName = fileName,
@@ -235,6 +251,13 @@ public class PulumiService
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+
+        // Ensure Pulumi can find plugins even when HOME isn't set (common in containers).
+        startInfo.Environment["PULUMI_HOME"] = pulumiHome;
+        if (!startInfo.Environment.ContainsKey("HOME"))
+        {
+            startInfo.Environment["HOME"] = Directory.GetCurrentDirectory();
+        }
 
         using var process = new Process { StartInfo = startInfo };
         process.Start();

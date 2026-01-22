@@ -1,2 +1,10 @@
 config:
   azure-native:location: westeurope
+  platform-engineering-infra:PULUMI_ACCESS_TOKEN:
+    secure: AAABALkgCeWVdBgrqaw8kC4NCYnmN5We/4by8C783JL7+tW6D+og3B54nXaLw00YqeZwDUC9nwEFUEjndhxBKNfW9+FcWz51dI2PJA==
+  platform-engineering-infra:GithubToken:
+    secure: AAABAH9O28Q8kuST1FcepnX1R2qNyZ0ox8LqBM2ZTVnqYEzBGeWD1qqv/F3NTNdTdH/r6YuJ7mV96FKorf5y7lGFsYhY7bMISp80TDmbPpuUYW20/UYYjEN2um/g0XNbI6m5FwtId6IyfUxDzC2D/k00M9x1H5JlEpTOB8E=
+  platform-engineering-infra:GitLabToken:
+    secure: AAABAGmY1cHYtu73vaT/YbZJNzZlKo42VTai3NFCBvc/eWtkkObS7iyUS0sMhbOKl2MFOXKJkfAtp6FBu8m7BwO6gfBV2oU8gColHl+vvMR+P5fxXsv9Sj4=
+  platform-engineering-infra:GitHubOrganizationName:
+    secure: AAABANvPc7Xxz4l3iMAZYzpZHoaVs6JdvJbD28KPNh8Fj3cJjSxsQjN6DDmtXKv814yrxXMrGtTIoepp

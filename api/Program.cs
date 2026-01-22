@@ -56,13 +56,13 @@ public class Program
 
         app.UseHttpsRedirection();
 
-        app.MapPost(
-            "/create-project",
-            async (
-                TemplateRequest[] request,
-                PulumiService pulumiService,
-                ILogger<Program> logger
-            ) =>
+        var createProjectHandler = async (
+            TemplateRequest[] request,
+            PulumiService pulumiService,
+            ILogger<Program> logger
+        ) =>
+        {
+            try
             {
                 List<ResultPulumiAction> results = new List<ResultPulumiAction>();
                 foreach (TemplateRequest req in request)
@@ -109,10 +109,25 @@ public class Program
                     }
                     results.Add(actionResult);
                 }
-
+                
                 return Results.Ok(results);
             }
-        );
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unhandled exception in createProjectHandler: {Message}", ex.Message);
+                return Results.Json(new ResultPulumiAction
+                {
+                    Name = "",
+                    ResourceType = "",
+                    StatusCode = 500,
+                    Message = $"Internal server error: {ex.Message}",
+                }, statusCode: 500);
+            }
+        };
+
+        // Azure Static Web Apps proxies backend requests via the fixed /api prefix.
+        app.MapPost("/create-project", createProjectHandler);
+        app.MapPost("/api/create-project", createProjectHandler);
 
         app.Run();
     }
