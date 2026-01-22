@@ -77,6 +77,24 @@ const vault = new keyvault.Vault(`kv-${projectPrefix}`, {
   },
 });
 
+const raKvSecretsOfficerForPulumiName = new random.RandomUuid(
+  `ra-kv-pulumi-guid-${projectPrefix}`,
+).result;
+const keyVaultSecretsOfficerRoleDefinitionId = "b86a8fe4-44ce-4948-aee5-eccb2c155cd7";
+const raKvSecretsOfficerForPulumi = new authorization.RoleAssignment(
+  `ra-kv-secrets-officer-pulumi-${projectPrefix}`,
+  {
+    roleAssignmentName: raKvSecretsOfficerForPulumiName,
+    principalId: client.objectId, // the identity running Pulumi (az login / SPN)
+    roleDefinitionId: pulumi.interpolate`/providers/Microsoft.Authorization/roleDefinitions/${keyVaultSecretsOfficerRoleDefinitionId}`,
+    scope: vault.id,
+    // If you're running via az login: "User"
+    // If you're running via SPN/OIDC: "ServicePrincipal"
+    // You can keep it as "User" if you run locally; set it to "ServicePrincipal" in CI.
+    principalType: "User",
+  },
+);
+
 const kvSecrets: Record<string, pulumi.Input<string>> = {
   "pulumi-access-token": pulumiAccessToken,
   "github-token": githubToken,
@@ -85,6 +103,7 @@ const kvSecrets: Record<string, pulumi.Input<string>> = {
 };
 
 const createdKvSecrets: Record<string, keyvault.Secret> = {};
+
 for (const [secretName, secretValue] of Object.entries(kvSecrets)) {
   createdKvSecrets[secretName] = new keyvault.Secret(
     `kvsec-${projectPrefix}-${secretName}`,
@@ -94,13 +113,16 @@ for (const [secretName, secretValue] of Object.entries(kvSecrets)) {
       secretName,
       properties: { value: secretValue },
     },
-    // 👇 IMPORTANT: si avant tu avais un seul secret avec un autre nom Pulumi,
-    // mets un alias UNIQUEMENT pour celui-là (sinon supprime ce bloc)
-    secretName === "pulumi-access-token"
-      ? { aliases: [{ name: `kvsec-${projectPrefix}-pulumi-access-token` }] } // mets ici L’ANCIEN nom Pulumi si tu l’as changé
-      : undefined,
+    {
+      dependsOn: [raKvSecretsOfficerForPulumi],
+      // Optional: aliases if you renamed the Pulumi resource name previously
+      ...(secretName === "pulumi-access-token"
+        ? { aliases: [{ name: `kvsec-${projectPrefix}-pulumi-access-token` }] }
+        : {}),
+    },
   );
 }
+
 
 const kvSecretUris: Record<string, pulumi.Output<string>> = {};
 for (const secretName of Object.keys(kvSecrets)) {

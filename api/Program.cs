@@ -109,10 +109,7 @@ public class Program
                     }
                     results.Add(actionResult);
                 }
-
-                // Log the results before returning, and test JSON serialization
-                // Debug logging of serialized results removed for production safety and performance.
-
+                
                 return Results.Ok(results);
             }
             catch (Exception ex)
