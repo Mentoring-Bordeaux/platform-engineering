@@ -77,19 +77,6 @@ const vault = new keyvault.Vault(`kv-${projectPrefix}`, {
   },
 });
 
-const raKvSecretsOfficerForPulumiName = new random.RandomUuid(
-  `ra-kv-pulumi-guid-${projectPrefix}`,
-).result;
-const keyVaultSecretsOfficerRoleDefinitionId = "b86a8fe4-44ce-4948-aee5-eccb2c155cd7";
-const raKvSecretsOfficerForPulumi = new authorization.RoleAssignment(
-  `ra-kv-secrets-officer-pulumi-${projectPrefix}`,
-  {
-    roleAssignmentName: raKvSecretsOfficerForPulumiName,
-    principalId: client.objectId, // the identity running Pulumi (az login / SPN)
-    roleDefinitionId: pulumi.interpolate`/providers/Microsoft.Authorization/roleDefinitions/${keyVaultSecretsOfficerRoleDefinitionId}`,
-    scope: vault.id,
-  },
-);
 
 const kvSecrets: Record<string, pulumi.Input<string>> = {
   "pulumi-access-token": pulumiAccessToken,
@@ -110,7 +97,6 @@ for (const [secretName, secretValue] of Object.entries(kvSecrets)) {
       properties: { value: secretValue },
     },
     {
-      dependsOn: [raKvSecretsOfficerForPulumi],
       // Optional: aliases if you renamed the Pulumi resource name previously
       ...(secretName === "pulumi-access-token"
         ? { aliases: [{ name: `kvsec-${projectPrefix}-pulumi-access-token` }] }
@@ -240,7 +226,9 @@ const backend = new containerapp.ContainerApp(
       ],
     },
   },
-  { dependsOn: [roleAssignment] },
+  { dependsOn: [roleAssignment, // ACR pull
+      roleAssignmentKvSecretsUser, // UAI can read secrets
+] },
 );
 
 // --- RBAC pour que Pulumi (MSI System Assigned) puisse créer/lire des Resource Groups ---
