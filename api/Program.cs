@@ -54,7 +54,7 @@ public class Program
             app.MapScalarApiReference();
         }
 
-        // app.UseHttpsRedirection(); // Désactivé temporairement pour debug Azure
+        app.UseHttpsRedirection();
 
         var createProjectHandler = async (
             TemplateRequest[] request,
@@ -111,31 +111,9 @@ public class Program
                 }
 
                 // Log the results before returning, and test JSON serialization
-                try
-                {
-                    var json = System.Text.Json.JsonSerializer.Serialize(results);
-                    logger.LogInformation("[DEBUG] JSON serialization of results succeeded: {Json}", json);
-                }
-                catch (Exception jsonEx)
-                {
-                    logger.LogError(jsonEx, "[DEBUG] JSON serialization of results failed: {Message}", jsonEx.Message);
-                }
+                // Debug logging of serialized results removed for production safety and performance.
 
-                try
-                {
-                    return Results.Ok(results);
-                }
-                catch (Exception serializationEx)
-                {
-                    logger.LogError(serializationEx, "Serialization error in createProjectHandler: {Message}", serializationEx.Message);
-                    return Results.Json(new ResultPulumiAction
-                    {
-                        Name = "",
-                        ResourceType = "",
-                        StatusCode = 500,
-                        Message = $"Serialization error: {serializationEx.Message}",
-                    }, statusCode: 500);
-                }
+                return Results.Ok(results);
             }
             catch (Exception ex)
             {

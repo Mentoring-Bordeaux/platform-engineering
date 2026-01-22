@@ -55,10 +55,6 @@ RUN pnpm install --frozen-lockfile
 WORKDIR /pulumiPrograms
 COPY ./pulumiPrograms ./
 RUN find . -name "package.json" -not -path "./node_modules/*" -exec sh -c 'cd "$(dirname "{}")" && pnpm install --frozen-lockfile' \;
-# # Install github subproject dependencies
-# WORKDIR /pulumiPrograms/platforms/github
-# COPY ./pulumiPrograms/platforms/github/package.json ./pulumiPrograms/platforms/github/pnpm-lock.yaml ./
-# RUN pnpm install --frozen-lockfile
 
 # Build Stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0.100-rc.2 AS build
@@ -79,8 +75,6 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-# Pulumi programs where PulumiService expects them
-# COPY --from=build /src/pulumiPrograms /app/pulumiPrograms
 # Copy all pulumiPrograms content (including any node_modules) recursively
 COPY --from=deps /pulumiPrograms /app/pulumiPrograms
 

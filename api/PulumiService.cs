@@ -26,13 +26,9 @@ public class PulumiService
 
     public async Task<IResult> ExecuteAsync(TemplateRequest request)
     {
+        // Pulumi environment variables are set per-process in RunCommandAsync to avoid global state/race conditions.
         var pulumiHome = GetPulumiHome();
         Directory.CreateDirectory(pulumiHome);
-        Environment.SetEnvironmentVariable("PULUMI_HOME", pulumiHome);
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HOME")))
-        {
-            Environment.SetEnvironmentVariable("HOME", Directory.GetCurrentDirectory());
-        }
 
         string resourceType = request.ResourceType;
 
