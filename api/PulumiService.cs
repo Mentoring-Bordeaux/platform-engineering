@@ -47,31 +47,51 @@ public class PulumiService
             {
                 var gitService = new GitHubService(token);
 
-                string repoToPush;
+                string repoToPush = request.Name;
 
                 if (!string.IsNullOrEmpty(request.Framework))
                 {
-                    repoToPush = request.Name;
-                    string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "templateFramework", request.Framework);
-
-                    if (Directory.Exists(templatePath))
-                        await gitService.InitializeRepoWithFrameworkAsync(orgName, repoToPush, templatePath, request.Parameters);
+                    // Initialisation dynamique via CLI selon le type de framework
+                    if (Enum.TryParse<FrameworkType>(request.Framework, true, out var frameworkType))
+                    {
+                        await gitService.InitializeRepoWithFrameworkAsync(
+                            orgName,
+                            repoToPush,
+                            frameworkType,
+                            request.Name
+                        );
+                    }
                     else
-                        _logger.LogWarning("Template framework path does not exist: {TemplatePath}", templatePath);
+                    {
+                        _logger.LogWarning("Framework non supporté : {Framework}", request.Framework);
+                    }
                 }
                 else
                 {
+                    // Si pas de framework, on peut éventuellement utiliser un repo cible existant
                     repoToPush = request.Parameters.ContainsKey("targetRepo") ? request.Parameters["targetRepo"] : request.Name;
                 }
+
+                // Push le code Pulumi si ce n'est pas une plateforme GitHub
                 if (!resourceType.StartsWith("platforms/github"))
                 {
                     if (Directory.Exists(workingDir))
-                        await gitService.PushPulumiCodeAsync(orgName, repoToPush, workingDir, request.Parameters, request.Name);
-
+                    {
+                        await gitService.PushPulumiCodeAsync(
+                            orgName,
+                            repoToPush,
+                            workingDir,
+                            request.Parameters,
+                            request.Name
+                        );
+                    }
                     else
+                    {
                         _logger.LogWarning("Pulumi program path does not exist: {PulumiPath}", workingDir);
+                    }
                 }
             }
+
 
             return Results.Json(outputs);
         }

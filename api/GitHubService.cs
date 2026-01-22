@@ -1,7 +1,16 @@
 using Octokit;
-using System.Text.RegularExpressions;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Pulumi.Automation;
+using System.Text.RegularExpressions;
+
+public enum FrameworkType
+{
+    dotnet,
+    React,
+    Vue,
+    Nuxt,
+    JavaSpring
+}
 
 public class GitHubService
 {
@@ -15,24 +24,83 @@ public class GitHubService
         };
     }
 
-    // Initialise le repo avec le framework en remplaçant les placeholders {{Key}}
+    // Initialise le repo avec un projet généré dynamiquement via CLI
     public async Task InitializeRepoWithFrameworkAsync(
-        string orgName, string repoName, string localTemplatePath, Dictionary<string, string>? parameters = null)
+        string orgName,
+        string repoName,
+        FrameworkType framework,
+        string projectName)
     {
-        parameters ??= new Dictionary<string, string>();
-        if (!Directory.Exists(localTemplatePath))
-            throw new DirectoryNotFoundException($"Template path does not exist: {localTemplatePath}");
+        // Crée un dossier temporaire pour générer le projet
+        string tempDir = Path.Combine(Path.GetTempPath(), projectName);
+        if (Directory.Exists(tempDir))
+            Directory.Delete(tempDir, true);
+        Directory.CreateDirectory(tempDir);
 
-        foreach (var filePath in Directory.GetFiles(localTemplatePath, "*", SearchOption.AllDirectories))
+        // Génération du projet selon le framework
+        GenerateProjectByCli(framework, tempDir);
+
+        // Pousse tous les fichiers générés vers GitHub
+        await PushDirectoryToGitHub(orgName, repoName, tempDir, "app");
+
+        // Supprime le dossier temporaire
+        Directory.Delete(tempDir, true);
+    }
+
+    private void GenerateProjectByCli(FrameworkType framework, string targetDir)
+    {
+        string args = framework switch
         {
-            var relativePath = Path.Combine("app", Path.GetRelativePath(localTemplatePath, filePath)).Replace("\\", "/");
-            var content = await File.ReadAllTextAsync(filePath);
+            FrameworkType.dotnet => "new webapi -n app",
+            FrameworkType.React => "create vite@latest app -- --template react",
+            FrameworkType.Vue => "create vue@latest app",
+            FrameworkType.Nuxt => "nuxi init app",
+            FrameworkType.JavaSpring => "init app --build=maven --java-version=17",
+            _ => throw new ArgumentException("Framework non supporté")
+        };
 
-            foreach (var kv in parameters)
+        string executable = framework switch
+        {
+            FrameworkType.dotnet => "dotnet",
+            FrameworkType.React or FrameworkType.Vue => "npm",
+            FrameworkType.Nuxt => "npx",
+            FrameworkType.JavaSpring => "spring",
+            _ => throw new ArgumentException("Framework non supporté")
+        };
+
+        RunCommand(executable, args, targetDir);
+    }
+
+    private void RunCommand(string fileName, string args, string workingDir)
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
             {
-                string pattern = @"\{\{\s*" + Regex.Escape(kv.Key) + @"\s*\}\}";
-                content = Regex.Replace(content, pattern, kv.Value);
+                FileName = fileName,
+                Arguments = args,
+                WorkingDirectory = workingDir,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
             }
+        };
+
+        process.Start();
+        string stdout = process.StandardOutput.ReadToEnd();
+        string stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+            throw new Exception($"Erreur lors de l'exécution de la commande {fileName} {args}:\n{stderr}");
+    }
+
+    private async Task PushDirectoryToGitHub(string orgName, string repoName, string localPath, string targetRoot)
+    {
+        foreach (var filePath in Directory.GetFiles(localPath, "*", SearchOption.AllDirectories))
+        {
+            var relativePath = Path.Combine(targetRoot, Path.GetRelativePath(localPath, filePath)).Replace("\\", "/");
+            string content = await File.ReadAllTextAsync(filePath);
 
             try
             {
@@ -40,19 +108,21 @@ public class GitHubService
                     orgName,
                     repoName,
                     relativePath,
-                    new CreateFileRequest(message: $"Add {relativePath}", content: content, branch: "main")
+                    new CreateFileRequest($"Add {relativePath}", content, branch: "main")
                 );
             }
             catch (Octokit.ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
             {
-                // Le fichier existe déjà → mettre à jour si besoin
                 var existingFile = await _client.Repository.Content.GetAllContentsByRef(orgName, repoName, relativePath, "main");
-                await _client.Repository.Content.UpdateFile(orgName, repoName, relativePath,
-                    new UpdateFileRequest($"Update {relativePath}", content, existingFile[0].Sha, "main"));
+                await _client.Repository.Content.UpdateFile(
+                    orgName,
+                    repoName,
+                    relativePath,
+                    new UpdateFileRequest($"Update {relativePath}", content, existingFile[0].Sha, "main")
+                );
             }
         }
     }
-
     // Pousse les fichiers Pulumi dans le repo
     public async Task PushPulumiCodeAsync(
     string orgName,
