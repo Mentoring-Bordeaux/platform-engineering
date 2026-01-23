@@ -24,50 +24,48 @@ public class PulumiService
         _environment = environment;
     }
 
-    public async Task<IResult> ExecuteAsync(TemplateRequest request)
+
+    public async Task<IResult> ExecuteTemplateAsync(CreateProjectRequest request)
     {
-        // Pulumi environment variables are set per-process in RunCommandAsync to avoid global state/race conditions.
-        var pulumiHome = GetPulumiHome();
-        Directory.CreateDirectory(pulumiHome);
-
-        string resourceType = request.ResourceType;
-
-        // The frontend encodes nested folders as `platforms//github`.
-        // Normalize to a real filesystem path segment (e.g. platforms\github).
-        var normalizedResourceType = resourceType
-            .Replace("//", Path.DirectorySeparatorChar.ToString())
-            .Replace('/', Path.DirectorySeparatorChar)
-            .Trim(Path.DirectorySeparatorChar);
-
-        var workingDir = Path.Combine(
-            Directory.GetCurrentDirectory(),
-            "pulumiPrograms",
-            normalizedResourceType
-        );
+        // Recherche du template par nom (templateName)
+        string templateName = request.TemplateName;
+        var templateDir = Path.Combine(Directory.GetCurrentDirectory(), "templates", templateName);
 
         _logger.LogInformation(
-            "Looking for Pulumi program for type '{ResourceType}' at path '{WorkingDir}'",
-            resourceType,
-            workingDir
+            "Looking for template '{TemplateName}' at path '{TemplateDir}'",
+            templateName,
+            templateDir
         );
 
-        if (!Directory.Exists(workingDir))
+        if (!Directory.Exists(templateDir))
         {
             _logger.LogWarning(
-                "Pulumi program not found for type '{ResourceType}' at path '{WorkingDir}'",
-                resourceType,
-                workingDir
+                "Template not found: '{TemplateName}' at path '{TemplateDir}'",
+                templateName,
+                templateDir
             );
-            return Results.BadRequest(
-                $"Pulumi program not found for type '{resourceType}' at path '{workingDir}'."
-            );
+            return Results.BadRequest($"Template not found: '{templateName}'");
         }
 
-        string requestAndType = $"{request.Name}-{resourceType}";
+        var pulumiProgramDir = Path.Combine(templateDir, "pulumi");
 
-        string stackName = Regex.Replace(requestAndType.ToLower(), @"[^a-z0-9\-]", "-");
+        if (!Directory.Exists(pulumiProgramDir))
+        {
+            _logger.LogWarning(
+                "Pulumi program not found in template '{TemplateName}' at path '{PulumiDir}'",
+                templateName,
+                pulumiProgramDir
+            );
+            return Results.BadRequest($"Pulumi program not found in template '{templateName}'");
+        }
 
-        _logger.LogInformation("Using stack name: {StackName}", stackName);
+        string stackName = Regex.Replace(request.ProjectName.ToLower(), @"[^a-z0-9\-]", "-");
+
+        _logger.LogInformation(
+            "Using stack name: {StackName} for template: {TemplateName}",
+            stackName,
+            templateName
+        );
 
         WorkspaceStack? stack = null;
         try
@@ -75,16 +73,16 @@ public class PulumiService
             // Pulumi NodeJS templates require their SDK dependencies to be installed.
             // If node_modules is missing, run `pulumi install` in the program folder.
             // This matches Pulumi's own guidance and avoids manual setup for every template.
-            var nodeModulesPath = Path.Combine(workingDir, "node_modules");
+            var nodeModulesPath = Path.Combine(pulumiProgramDir, "node_modules");
             if (!Directory.Exists(nodeModulesPath))
             {
                 _logger.LogInformation(
-                    "node_modules not found for '{ResourceType}'. Running `pulumi install` in '{WorkingDir}'.",
-                    resourceType,
-                    workingDir
+                    "node_modules not found for template '{TemplateName}'. Running `pulumi install` in '{PulumiDir}'.",
+                    templateName,
+                    pulumiProgramDir
                 );
 
-                var installResult = await RunCommandAsync("pulumi", "install", workingDir);
+                var installResult = await RunCommandAsync("pulumi", "install", pulumiProgramDir);
                 if (installResult.ExitCode != 0)
                 {
                     _logger.LogError(
@@ -103,7 +101,7 @@ public class PulumiService
             }
 
             stack = await LocalWorkspace.CreateOrSelectStackAsync(
-                new LocalProgramArgs(stackName, workingDir)
+                new LocalProgramArgs(stackName, pulumiProgramDir)
             );
 
             // Install Pulumi dependencies (required for TypeScript programs)
@@ -112,80 +110,20 @@ public class PulumiService
                 await stack.Workspace.InstallAsync();
             }
 
-            var pulumiProjectName = TryGetPulumiProjectName(workingDir);
-
-            string QualifyConfigKey(string key)
-            {
-                if (string.IsNullOrWhiteSpace(key))
-                {
-                    return key;
-                }
-
-                // Already-qualified keys (e.g. aws:region) or Pulumi internal keys.
-                if (key.StartsWith("pulumi:", StringComparison.OrdinalIgnoreCase) || key.Contains(':'))
-                {
-                    return key;
-                }
-
-                // User config keys must be namespaced as "<project>:<key>".
-                if (!string.IsNullOrWhiteSpace(pulumiProjectName))
-                {
-                    return $"{pulumiProjectName}:{key}";
-                }
-
-                return key;
-            }
-
             // GitHub template requires `name`; GitLab template requires `Name`.
             // Setting both is safe and avoids template-specific branching.
-            await stack.SetConfigAsync(QualifyConfigKey("name"), new ConfigValue(request.Name));
-            await stack.SetConfigAsync(QualifyConfigKey("Name"), new ConfigValue(request.Name));
+            await stack.SetConfigAsync("name", new ConfigValue(request.ProjectName));
+            await stack.SetConfigAsync("Name", new ConfigValue(request.ProjectName));
 
-            // Remove stale config keys from previous runs when they are not provided anymore.
-            // Pulumi stack config persists across updates, so an old value (e.g. an invalid gitlabBaseUrl)
-            // can keep breaking runs even after we stop injecting it.
-            var desiredKeys = request.Parameters.Keys
-                .Where(k => k != "type")
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            desiredKeys.Add("name");
-            desiredKeys.Add("Name");
-
-            var existingConfig = await stack.GetAllConfigAsync();
-            foreach (var existingKey in existingConfig.Keys)
-            {
-                // Keep Pulumi internal keys.
-                if (existingKey.StartsWith("pulumi:", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                // Pulumi stores user config keys namespaced by project (e.g. "myproj:Name").
-                // Only compare the suffix ("Name") against desired keys.
-                string? keyPrefix = null;
-                var keySuffix = existingKey;
-                var colonIndex = existingKey.IndexOf(':');
-                if (colonIndex >= 0 && colonIndex < existingKey.Length - 1)
-                {
-                    keyPrefix = existingKey[..colonIndex];
-                    keySuffix = existingKey[(colonIndex + 1)..];
-                }
-
-                // Only clean keys in the current project namespace (avoid touching unrelated namespaces).
-                if (!string.IsNullOrWhiteSpace(pulumiProjectName) && keyPrefix != null && !keyPrefix.Equals(pulumiProjectName, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (!desiredKeys.Contains(keySuffix))
-                {
-                    await stack.RemoveConfigAsync(existingKey);
-                }
-            }
-
-            // Configurate the stack with parameters from the request (excluding "type")
+            // Set all template parameters (excluding "type")
             foreach (var kv in request.Parameters.Where(kv => kv.Key != "type"))
-                await stack.SetConfigAsync(QualifyConfigKey(kv.Key), new ConfigValue(kv.Value));
-            
+            {
+                var valueStr = kv.Value?.ToString() ?? "";
+                string normalizedValue = bool.TryParse(valueStr, out var boolValue)
+                    ? boolValue.ToString().ToLowerInvariant()
+                    : valueStr;
+                await stack.SetConfigAsync(kv.Key, new ConfigValue(normalizedValue));
+            }
             var result = await stack.UpAsync(
                 new UpOptions
                 {
@@ -199,7 +137,24 @@ public class PulumiService
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error executing template '{TemplateName}'", templateName);
             return Results.Problem(ex.Message, statusCode: 500);
+        }
+        finally
+        {
+            // Clean up the stack
+            if (stack != null)
+            {
+                try
+                {
+                    await stack.DestroyAsync();
+                    await stack.Workspace.RemoveStackAsync(stackName);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to clean up stack '{StackName}'", stackName);
+                }
+            }
         }
     }
 

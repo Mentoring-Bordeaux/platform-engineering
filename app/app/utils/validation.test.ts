@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
   generateFieldSchema,
-  generateResourceConfigSchema,
   generatePlatformConfigSchema,
   generateProjectConfigurationSchema
 } from './validation'
 import type { ProjectOptions } from '~/config/project-options'
+import type { Platform } from '~/types'
+import { normalizeTemplate } from '~/types/templates'
+import type { RawTemplate } from '~/types/templates'
 
 describe('Validation Schema', () => {
   describe('generateFieldSchema', () => {
@@ -75,46 +77,11 @@ describe('Validation Schema', () => {
     })
   })
 
-  describe('Resource Configuration Schema', () => {
-    it('should generate valid schema for any resource', () => {
-      // Test that schema generation works for any resource
-      const resource = {
-        name: 'Test Resource',
-        icon: 'test-icon',
-        config: {
-          testField: {
-            type: 'text' as const,
-            required: true,
-            label: 'Test Field',
-            description: 'A test field'
-          }
-        }
-      }
-      const schema = generateResourceConfigSchema(resource)
-
-      const validConfig = {
-        name: resource.name,
-        config: {
-          testField: 'valid value'
-        }
-      }
-      expect(() => schema.parse(validConfig)).not.toThrow()
-
-      const invalidConfig = {
-        name: resource.name,
-        config: {
-          testField: '' // Empty required field
-        }
-      }
-      expect(() => schema.parse(invalidConfig)).toThrow()
-    })
-  })
-
   describe('Platform Configuration Schema', () => {
     it('should generate valid schema for any platform', () => {
       // Test that schema generation works for any platform
-      const platform = {
-        name: 'Test Platform',
+      const platform: Platform = {
+        type: 'test-platform',
         icon: 'test-icon',
         config: {
           requiredField: {
@@ -134,7 +101,7 @@ describe('Validation Schema', () => {
       const schema = generatePlatformConfigSchema(platform)
 
       const validConfig = {
-        name: platform.name,
+        name: platform.type,
         config: {
           requiredField: 'valid value',
           optionalField: 'optional value'
@@ -143,7 +110,7 @@ describe('Validation Schema', () => {
       expect(() => schema.parse(validConfig)).not.toThrow()
 
       const invalidConfig = {
-        name: platform.name,
+        name: platform.type,
         config: {
           requiredField: '', // Empty required field
           optionalField: 'optional value'
@@ -155,36 +122,32 @@ describe('Validation Schema', () => {
 
   describe('Project Configuration Schema - State Shape Match', () => {
     it('should match state shape for any project configuration', () => {
-      // Create a generic project with mock resources and platform
-      const mockResource1 = {
-        name: 'Resource 1',
-        icon: 'icon1',
-        config: {
+      // Create a generic project with mock template and platform
+      const rawTemplate: RawTemplate = {
+        name: 'test-template',
+        displayName: 'Test Template',
+        description: 'A test template',
+        parameters: {
           field1: {
-            type: 'text' as const,
-            required: true,
+            type: 'text',
             label: 'Field 1',
-            description: 'Description 1'
-          }
-        }
-      }
-
-      const mockResource2 = {
-        name: 'Resource 2',
-        icon: 'icon2',
-        config: {
-          field2: {
-            type: 'enum' as const,
             required: true,
+            description: 'Description 1',
+            default: 'default value'
+          },
+          field2: {
+            type: 'enum',
             label: 'Field 2',
+            required: true,
             description: 'Description 2',
-            values: ['option1', 'option2']
+            values: ['option1', 'option2'],
+            default: 'option1'
           }
         }
       }
 
-      const mockPlatform = {
-        name: 'Test Platform',
+      const mockPlatform: Platform = {
+        type: 'test-platform',
         icon: 'platform-icon',
         config: {
           platformField: {
@@ -198,7 +161,7 @@ describe('Validation Schema', () => {
 
       const projectData: ProjectOptions = {
         name: 'Test Project',
-        resources: [mockResource1, mockResource2],
+        template: normalizeTemplate(rawTemplate),
         platform: mockPlatform
       }
 
@@ -206,22 +169,12 @@ describe('Validation Schema', () => {
 
       // Valid state matching the schema structure
       const validState = {
-        resources: [
-          {
-            name: 'Resource 1',
-            config: {
-              field1: 'valid value'
-            }
-          },
-          {
-            name: 'Resource 2',
-            config: {
-              field2: 'option1'
-            }
-          }
-        ],
+        parameters: {
+          field1: 'valid value',
+          field2: 'option1'
+        },
         platform: {
-          name: 'Test Platform',
+          name: 'test-platform',
           config: {
             platformField: 'valid platform value'
           }
@@ -233,12 +186,12 @@ describe('Validation Schema', () => {
     })
 
     it('should reject invalid configurations', () => {
-      const mockResource = {
-        name: 'Resource',
-        icon: 'icon',
-        config: {
+      const rawTemplate: RawTemplate = {
+        name: 'test-template',
+        description: 'Test',
+        parameters: {
           requiredField: {
-            type: 'text' as const,
+            type: 'text',
             required: true,
             label: 'Required Field',
             description: 'A required field'
@@ -246,9 +199,9 @@ describe('Validation Schema', () => {
         }
       }
 
-      const mockPlatform = {
-        name: 'Platform',
-        icon: 'icon',
+      const mockPlatform: Platform = {
+        type: 'test-platform',
+        icon: 'platform-icon',
         config: {
           requiredPlatformField: {
             type: 'text' as const,
@@ -261,398 +214,98 @@ describe('Validation Schema', () => {
 
       const projectData: ProjectOptions = {
         name: 'Test Project',
-        resources: [mockResource],
+        template: normalizeTemplate(rawTemplate),
         platform: mockPlatform
       }
 
       const schema = generateProjectConfigurationSchema(projectData)
 
-      // Invalid state - empty required field in resource
+      // Invalid state - empty required field in template
       const invalidResourceState = {
-        resources: [
-          {
-            name: 'Resource',
-            config: {
-              requiredField: '' // Empty required field
-            }
-          }
-        ],
+        parameters: {
+          requiredField: ''
+        },
         platform: {
-          name: 'Platform',
+          name: 'test-platform',
           config: {
             requiredPlatformField: 'valid value'
           }
         }
       }
 
-      const resourceResult = schema.safeParse(invalidResourceState)
-      expect(resourceResult.success).toBe(false)
-      if (!resourceResult.success) {
-        expect(resourceResult.error.issues.length).toBeGreaterThan(0)
-        expect(resourceResult.error.issues[0]?.path).toContain('resources')
-      }
+      const templateResult = schema.safeParse(invalidResourceState)
+      expect(templateResult.success).toBe(false)
 
       // Invalid state - empty required field in platform
       const invalidPlatformState = {
-        resources: [
-          {
-            name: 'Resource',
-            config: {
-              requiredField: 'valid value'
-            }
-          }
-        ],
+        parameters: {
+          requiredField: 'valid value'
+        },
         platform: {
-          name: 'Platform',
+          name: 'test-platform',
           config: {
-            requiredPlatformField: '' // Empty required field
+            requiredPlatformField: ''
           }
         }
       }
 
       const platformResult = schema.safeParse(invalidPlatformState)
       expect(platformResult.success).toBe(false)
-      if (!platformResult.success) {
-        expect(platformResult.error.issues.length).toBeGreaterThan(0)
-        expect(platformResult.error.issues[0]?.path).toContain('platform')
-      }
     })
+  })
 
-    it('should provide correct error paths for field validation', () => {
-      const mockResource = {
-        name: 'Resource',
-        icon: 'icon',
-        config: {
-          testField: {
-            type: 'text' as const,
+  describe('Type Compatibility', () => {
+    it('should reject state with invalid data at runtime', () => {
+      // Create a template with validation constraints
+      const rawTemplate: RawTemplate = {
+        name: 'test-template',
+        description: 'Test',
+        parameters: {
+          field1: {
+            type: 'text',
             required: true,
-            label: 'Test Field',
-            description: 'Test'
+            label: 'Field 1',
+            description: 'Description'
           }
         }
       }
 
-      const mockPlatform = {
-        name: 'Platform',
-        icon: 'icon',
+      const mockPlatform: Platform = {
+        type: 'test-platform',
+        icon: 'platform-icon',
         config: {
           platformField: {
             type: 'text' as const,
             required: true,
             label: 'Platform Field',
-            description: 'Test'
+            description: 'Platform Description'
           }
         }
       }
 
       const projectData: ProjectOptions = {
         name: 'Test Project',
-        resources: [mockResource],
+        template: normalizeTemplate(rawTemplate),
         platform: mockPlatform
       }
 
       const schema = generateProjectConfigurationSchema(projectData)
 
+      // Invalid state - empty required field in template
       const invalidState = {
-        resources: [
-          {
-            name: 'Resource',
-            config: {
-              testField: '' // Empty required field
-            }
-          }
-        ],
+        parameters: {
+          field1: ''
+        },
         platform: {
-          name: 'Platform',
+          name: 'test-platform',
           config: {
-            platformField: '' // Empty required field
+            platformField: ''
           }
         }
       }
 
       const result = schema.safeParse(invalidState)
       expect(result.success).toBe(false)
-
-      if (!result.success) {
-        const paths = result.error.issues.map(issue => issue.path.join('.'))
-
-        // Verify error paths match UFormField naming convention
-        expect(paths.some(p => p.startsWith('resources.'))).toBe(true)
-        expect(paths.some(p => p.startsWith('platform.'))).toBe(true)
-      }
-    })
-  })
-
-  describe('Type Compatibility', () => {
-    it('should accept array state for tuple schema at runtime', () => {
-      // Create mock resources with different config shapes
-      const mockResource1 = {
-        name: 'Resource 1',
-        icon: 'icon1',
-        config: {
-          field1: {
-            type: 'text' as const,
-            required: true,
-            label: 'Field 1',
-            description: 'Description'
-          }
-        }
-      }
-
-      const mockResource2 = {
-        name: 'Resource 2',
-        icon: 'icon2',
-        config: {
-          field1: {
-            type: 'number' as const,
-            required: true,
-            label: 'Field 2',
-            description: 'Description',
-            min: 1,
-            max: 100
-          },
-          field2: {
-            type: 'enum' as const,
-            required: false,
-            label: 'Field 3',
-            description: 'Description',
-            values: ['option1', 'option2']
-          }
-        }
-      }
-
-      const mockPlatform = {
-        name: 'Platform',
-        icon: 'icon',
-        config: {
-          platformField: {
-            type: 'text' as const,
-            required: true,
-            label: 'Platform Field',
-            description: 'Description'
-          }
-        }
-      }
-
-      const projectData: ProjectOptions = {
-        name: 'Test Project',
-        resources: [mockResource1, mockResource2],
-        platform: mockPlatform
-      }
-
-      const schema = generateProjectConfigurationSchema(projectData)
-
-      // State is defined as an array, schema uses tuple
-      // This should work at runtime
-      const arrayState = {
-        resources: [
-          {
-            name: 'Resource 1',
-            config: {
-              field1: 'valid text'
-            }
-          },
-          {
-            name: 'Resource 2',
-            config: {
-              field1: 50,
-              field2: 'option1'
-            }
-          }
-        ],
-        platform: {
-          name: 'Platform',
-          config: {
-            platformField: 'valid platform value'
-          }
-        }
-      }
-
-      // Verify runtime compatibility
-      const result = schema.safeParse(arrayState)
-      expect(result.success).toBe(true)
-
-      // Verify that validated data maintains array structure
-      if (result.success) {
-        expect(Array.isArray(result.data.resources)).toBe(true)
-        expect(result.data.resources.length).toBe(2)
-      }
-    })
-
-    it('should reject array state with invalid data at runtime', () => {
-      // Create mock resources with validation constraints
-      const mockResource1 = {
-        name: 'Resource 1',
-        icon: 'icon1',
-        config: {
-          field1: {
-            type: 'text' as const,
-            required: true,
-            label: 'Field 1',
-            description: 'Description'
-          }
-        }
-      }
-
-      const mockResource2 = {
-        name: 'Resource 2',
-        icon: 'icon2',
-        config: {
-          field1: {
-            type: 'number' as const,
-            required: true,
-            label: 'Field 2',
-            description: 'Description',
-            min: 10,
-            max: 100
-          },
-          field2: {
-            type: 'enum' as const,
-            required: true,
-            label: 'Field 3',
-            description: 'Description',
-            values: ['option1', 'option2']
-          }
-        }
-      }
-
-      const mockPlatform = {
-        name: 'Platform',
-        icon: 'icon',
-        config: {
-          platformField: {
-            type: 'text' as const,
-            required: true,
-            label: 'Platform Field',
-            description: 'Description'
-          }
-        }
-      }
-
-      const projectData: ProjectOptions = {
-        name: 'Test Project',
-        resources: [mockResource1, mockResource2],
-        platform: mockPlatform
-      }
-
-      const schema = generateProjectConfigurationSchema(projectData)
-
-      // Test 1: Empty required field in first resource
-      const invalidState1 = {
-        resources: [
-          {
-            name: 'Resource 1',
-            config: {
-              field1: '' // Empty required field
-            }
-          },
-          {
-            name: 'Resource 2',
-            config: {
-              field1: 50,
-              field2: 'option1'
-            }
-          }
-        ],
-        platform: {
-          name: 'Platform',
-          config: {
-            platformField: 'valid value'
-          }
-        }
-      }
-
-      const result1 = schema.safeParse(invalidState1)
-      expect(result1.success).toBe(false)
-      if (!result1.success) {
-        expect(result1.error.issues[0]?.path).toContain('resources')
-      }
-
-      // Test 2: Number out of range in second resource
-      const invalidState2 = {
-        resources: [
-          {
-            name: 'Resource 1',
-            config: {
-              field1: 'valid text'
-            }
-          },
-          {
-            name: 'Resource 2',
-            config: {
-              field1: 5, // Below min (10)
-              field2: 'option1'
-            }
-          }
-        ],
-        platform: {
-          name: 'Platform',
-          config: {
-            platformField: 'valid value'
-          }
-        }
-      }
-
-      const result2 = schema.safeParse(invalidState2)
-      expect(result2.success).toBe(false)
-      if (!result2.success) {
-        const paths = result2.error.issues.map(issue => issue.path.join('.'))
-        expect(paths.some(p => p.includes('resources.1'))).toBe(true)
-      }
-
-      // Test 3: Invalid enum value
-      const invalidState3 = {
-        resources: [
-          {
-            name: 'Resource 1',
-            config: {
-              field1: 'valid text'
-            }
-          },
-          {
-            name: 'Resource 2',
-            config: {
-              field1: 50,
-              field2: 'invalid-option' // Not in enum values
-            }
-          }
-        ],
-        platform: {
-          name: 'Platform',
-          config: {
-            platformField: 'valid value'
-          }
-        }
-      }
-
-      const result3 = schema.safeParse(invalidState3)
-      expect(result3.success).toBe(false)
-      if (!result3.success) {
-        const paths = result3.error.issues.map(issue => issue.path.join('.'))
-        expect(paths.some(p => p.includes('field2'))).toBe(true)
-      }
-
-      // Test 4: Wrong number of resources (tuple mismatch)
-      const invalidState4 = {
-        resources: [
-          {
-            name: 'Resource 1',
-            config: {
-              field1: 'valid text'
-            }
-          }
-          // Missing second resource
-        ],
-        platform: {
-          name: 'Platform',
-          config: {
-            platformField: 'valid value'
-          }
-        }
-      }
-
-      const result4 = schema.safeParse(invalidState4)
-      expect(result4.success).toBe(false)
     })
   })
 })

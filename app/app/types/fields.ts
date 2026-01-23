@@ -2,7 +2,7 @@ export interface FieldBase {
   /** Label to display to the user */
   label: string
   /** Description to display to the user */
-  description: string
+  description?: string
   /** Whether the field is required */
   required?: boolean
 }
@@ -41,3 +41,34 @@ export type Field =
   | NumberField
   | SelectField
   | CheckboxField
+
+/**
+ * Raw field types as received from API (all defaults are strings)
+ * Text, textarea, and select fields are identical in raw and normalized forms.
+ * Number and boolean fields differ only in their default value type.
+ */
+
+// Raw versions of fields where default is always string from YAML
+export type RawTextField = TextField
+export type RawTextAreaField = TextAreaField
+
+export interface RawNumberField extends FieldBase {
+  type: 'number'
+  min?: number
+  max?: number
+  default?: string
+}
+
+export type RawSelectField = SelectField
+
+export interface RawCheckboxField extends FieldBase {
+  type: 'boolean'
+  default?: string
+}
+
+export type RawField =
+  | RawTextField
+  | RawTextAreaField
+  | RawNumberField
+  | RawSelectField
+  | RawCheckboxField
