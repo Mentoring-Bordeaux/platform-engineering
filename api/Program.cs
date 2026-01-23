@@ -73,6 +73,7 @@ public class Program
                 return Results.BadRequest(new { message = "ProjectName is required" });
             }
 
+
             try
             {
                 // Inject GitHub credentials from configuration
@@ -80,7 +81,12 @@ public class Program
                 string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
                 string gitlabToken = app.Configuration["GitLabToken"] ?? "";
                 string gitlabBaseUrl = app.Configuration["GitLabBaseUrl"] ?? "";
-                request.Parameters ??= new Dictionary<string, string>();
+
+                // Correction du typage : on s'assure que le dictionnaire est bien Dictionary<string, object>
+                if (request.Parameters == null)
+                {
+                    request.Parameters = new Dictionary<string, object>();
+                }
 
                 if (HasRealConfigValue(githubToken))
                 {
