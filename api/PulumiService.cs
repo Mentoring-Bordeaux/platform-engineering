@@ -33,7 +33,7 @@ public class PulumiService
         string resourceType = request.ResourceType;
 
         // The frontend encodes nested folders as `platforms//github`.
-        // Normalize to a real filesystem path segment (e.g. platforms\github).
+        // Normalize to a real filesystem path segment (e.g. platforms\github). 
         var normalizedResourceType = resourceType
             .Replace("//", Path.DirectorySeparatorChar.ToString())
             .Replace('/', Path.DirectorySeparatorChar)
@@ -195,48 +195,66 @@ public class PulumiService
             );
 
             var outputs = result.Outputs.ToDictionary(kv => kv.Key, kv => kv.Value?.Value);
-            if (request.Parameters.TryGetValue("githubToken", out var token) &&
-                request.Parameters.TryGetValue("githubOrganizationName", out var orgName))
+            if (resourceType.StartsWith("platforms/github") && outputs.TryGetValue("repoNameOutput", out var repoOutput))
+            {
+                var repoName = repoOutput?.ToString();
+                if (!string.IsNullOrWhiteSpace(repoName))
+                {
+                    PulumiGlobals.Outputs["githubRepoName"] = repoName;
+                }
+            }
+
+            if (resourceType.StartsWith("platforms/gitlab") && outputs.TryGetValue("repoUrl", out var gitlabRepoUrlOutput))
+            {
+                var repoUrl = gitlabRepoUrlOutput?.ToString();
+                if (!string.IsNullOrWhiteSpace(repoUrl))
+                {
+                    PulumiGlobals.Outputs["gitlabRepoUrl"] = repoUrl;
+                }
+            }
+
+            PulumiGlobals.Outputs.TryGetValue("githubRepoName", out var githubRepoName);
+            PulumiGlobals.Outputs.TryGetValue("gitlabRepoUrl", out var gitlabRepoUrl);
+
+            var hasGitHubRepo = !string.IsNullOrWhiteSpace(githubRepoName);
+            var hasGitLabRepo = !string.IsNullOrWhiteSpace(gitlabRepoUrl);
+
+            // Expose the last-created repo to subsequent Pulumi programs.
+            // Prefer GitHub repo name if present, otherwise GitLab repo URL.
+            if (hasGitHubRepo)
+            {
+                request.Parameters["targetRepo"] = githubRepoName!;
+            }
+            else if (hasGitLabRepo)
+            {
+                request.Parameters["targetRepo"] = gitlabRepoUrl!;
+            }
+
+            var isPlatformTemplate = resourceType.StartsWith("platforms/github") || resourceType.StartsWith("platforms/gitlab");
+
+            var shouldPushToGitHub =
+                request.Parameters.ContainsKey("githubToken")
+                && request.Parameters.ContainsKey("githubOrganizationName")
+                && (resourceType.StartsWith("platforms/github") ? hasGitHubRepo : (!isPlatformTemplate && hasGitHubRepo));
+
+            if (shouldPushToGitHub
+                && request.Parameters.TryGetValue("githubToken", out var token)
+                && request.Parameters.TryGetValue("githubOrganizationName", out var orgName))
             {
                 var gitService = new GitHubService(token);
+                var repoToPush = githubRepoName!;
 
-                string repoToPush = request.Name;
-
-                if (!string.IsNullOrEmpty(request.Framework))
+                if (!string.IsNullOrEmpty(request.Framework)
+                    && Enum.TryParse<FrameworkType>(request.Framework, true, out var frameworkType))
                 {
-                    // Initialisation dynamique via CLI selon le type de framework
-                    if (Enum.TryParse<FrameworkType>(request.Framework, true, out var frameworkType))
-                    {
-                        await gitService.InitializeRepoWithFrameworkAsync(
-                            orgName,
-                            repoToPush,
-                            frameworkType,
-                            request.Name
-                        );
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Framework non supporté : {Framework}", request.Framework);
-                    }
-                }
-                else
-                {
-                    // Si pas de framework, on peut éventuellement utiliser un repo cible existant
-                    repoToPush = request.Parameters.ContainsKey("targetRepo") ? request.Parameters["targetRepo"] : request.Name;
+                    await gitService.InitializeRepoWithFrameworkAsync(orgName, repoToPush, frameworkType, request.Name);
                 }
 
-                // Push le code Pulumi si ce n'est pas une plateforme GitHub
-                if (!resourceType.StartsWith("platforms/github"))
+                if (!isPlatformTemplate)
                 {
                     if (Directory.Exists(workingDir))
                     {
-                        await gitService.PushPulumiCodeAsync(
-                            orgName,
-                            repoToPush,
-                            workingDir,
-                            request.Parameters,
-                            request.Name
-                        );
+                        await gitService.PushPulumiCodeAsync(orgName, repoToPush, workingDir, request.Parameters, request.Name);
                     }
                     else
                     {
@@ -244,6 +262,35 @@ public class PulumiService
                     }
                 }
             }
+
+            var shouldPushToGitLab =
+                request.Parameters.ContainsKey("gitlabToken")
+                && (resourceType.StartsWith("platforms/gitlab") ? hasGitLabRepo : (!isPlatformTemplate && hasGitLabRepo));
+
+            if (shouldPushToGitLab && request.Parameters.TryGetValue("gitlabToken", out var gitlabToken))
+            {
+                request.Parameters.TryGetValue("gitlabBaseUrl", out var gitlabBaseUrl);
+                var gitlabService = new GitLabService(gitlabToken, gitlabBaseUrl);
+
+                if (!string.IsNullOrEmpty(request.Framework)
+                    && Enum.TryParse<FrameworkType>(request.Framework, true, out var frameworkType))
+                {
+                    await gitlabService.InitializeRepoWithFrameworkAsync(gitlabRepoUrl!, frameworkType, request.Name);
+                }
+
+                if (!isPlatformTemplate)
+                {
+                    if (Directory.Exists(workingDir))
+                    {
+                        await gitlabService.PushPulumiCodeAsync(gitlabRepoUrl!, workingDir, request.Parameters, request.Name);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Pulumi program path does not exist: {PulumiPath}", workingDir);
+                    }
+                }
+            }
+
 
             return Results.Json(outputs);
         }
@@ -325,4 +372,9 @@ public class PulumiService
     }
 
     private sealed record CommandResult(int ExitCode, string StandardOutput, string StandardError);
+}
+public static class PulumiGlobals
+{
+
+    public static Dictionary<string, string> Outputs = new Dictionary<string, string>();
 }

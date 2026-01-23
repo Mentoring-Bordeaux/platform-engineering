@@ -23,27 +23,21 @@ public class GitHubService
             Credentials = new Credentials(token)
         };
     }
-
-    // Initialise le repo avec un projet généré dynamiquement via CLI
     public async Task InitializeRepoWithFrameworkAsync(
         string orgName,
         string repoName,
         FrameworkType framework,
         string projectName)
     {
-        // Crée un dossier temporaire pour générer le projet
         string tempDir = Path.Combine(Path.GetTempPath(), projectName);
         if (Directory.Exists(tempDir))
             Directory.Delete(tempDir, true);
         Directory.CreateDirectory(tempDir);
 
-        // Génération du projet selon le framework
         GenerateProjectByCli(framework, tempDir);
 
-        // Pousse tous les fichiers générés vers GitHub
         await PushDirectoryToGitHub(orgName, repoName, tempDir, "app");
 
-        // Supprime le dossier temporaire
         Directory.Delete(tempDir, true);
     }
 
@@ -65,7 +59,7 @@ public class GitHubService
             FrameworkType.React or FrameworkType.Vue => "npm",
             FrameworkType.Nuxt => "npx",
             FrameworkType.JavaSpring => "spring",
-            _ => throw new ArgumentException("Framework non supporté")
+            _ => throw new ArgumentException("Unsupported framework")
         };
 
         RunCommand(executable, args, targetDir);
@@ -87,12 +81,11 @@ public class GitHubService
         };
 
         process.Start();
-        string stdout = process.StandardOutput.ReadToEnd();
         string stderr = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
         if (process.ExitCode != 0)
-            throw new Exception($"Erreur lors de l'exécution de la commande {fileName} {args}:\n{stderr}");
+            throw new Exception($"Error executing the command {fileName} {args}:\n{stderr}");
     }
 
     private async Task PushDirectoryToGitHub(string orgName, string repoName, string localPath, string targetRoot)
@@ -123,7 +116,7 @@ public class GitHubService
             }
         }
     }
-    // Pousse les fichiers Pulumi dans le repo
+
     public async Task PushPulumiCodeAsync(
     string orgName,
     string repoName,
@@ -151,26 +144,29 @@ public class GitHubService
             {
                 string value = kv.Value.Replace("\"", "\\\"");
 
-                // Remplace config.require("Key")
                 content = Regex.Replace(
                     content,
                     $@"config\.require\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)",
                     $"\"{value}\""
                 );
 
-                // Remplace config.get("Key") || "default"
                 content = Regex.Replace(
                     content,
                     $@"config\.get\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)\s*(\|\|\s*[""'][^""']*[""'])?",
                     $"\"{value}\""
                 );
 
-                // Remplace config.get("Key") simple
                 content = Regex.Replace(
                     content,
                     $@"config\.get\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)",
                     $"\"{value}\""
                 );
+                content = Regex.Replace(
+                    content,
+                    $@"config\.getSecret\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)",
+                    $"\"{value}\""
+                );
+
             }
 
 

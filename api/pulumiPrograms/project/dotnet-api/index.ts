@@ -7,7 +7,7 @@ const name = config.require("Name");
 const location = config.get("location") || "westeurope";
 const dotnetVersion = config.get("dotnetVersion") || "8.0";
 const sku = config.get("sku") || "B1";
-const adminPassword = config.get("adminPassword");
+const adminPassword = config.getSecret("adminPassword");
 const adminLogin = config.get("adminLogin") || "sqladminuser";
 
 const resourceGroup = new azure.resources.ResourceGroup(`${name}-rg`, {
@@ -65,21 +65,21 @@ const apiApp = new azure.web.WebApp(`${name}-api`, {
         windowsFxVersion: `DOTNET|${dotnetVersion}`,
         appSettings: [
             { name: "WEBSITE_RUN_FROM_PACKAGE", value: "1" },
-            // { name: "AZURE_KEYVAULT_NAME", value: kv.name },
+            { name: "AZURE_KEYVAULT_NAME", value: kv.name },
         ],
     },
 });
 
-// const appInsights = new appinsights.Component(`${name}-ai`, {
-//     resourceGroupName: resourceGroup.name,
-//     location,
-//     applicationType: "web",
-//     kind: "web",
-//     ingestionMode: "LogAnalytics",
-//     workspaceResourceId: logWorkspace.id,
-// });
+const appInsights = new appinsights.Component(`${name}-ai`, {
+    resourceGroupName: resourceGroup.name,
+    location,
+    applicationType: "web",
+    kind: "web",
+    ingestionMode: "LogAnalytics",
+    workspaceResourceId: logWorkspace.id,
+});
 
 export const apiUrl = pulumi.interpolate`https://${apiApp.defaultHostName}`;
-// export const keyVaultName = kv.name;
-// export const sqlDatabaseName = database.name;
-// export const appInsightsInstrumentationKey = appInsights.instrumentationKey;
+export const keyVaultName = kv.name;
+export const sqlDatabaseName = database.name;
+export const appInsightsInstrumentationKey = appInsights.instrumentationKey;

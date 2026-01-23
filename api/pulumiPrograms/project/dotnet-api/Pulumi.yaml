@@ -34,9 +34,5 @@ config:
   adminPassword:
     description: "SQL Server admin password"
     secret: true
-
-  targetRepo:
-    description: "Target GitHub repository to push the Pulumi program code"
-    default: ""
   
   
