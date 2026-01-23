@@ -165,14 +165,10 @@ public class Program
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(
-                        ex,
-                        "Failed to parse template file: {TemplateDir}",
-                        templateDir
-                    );
+                    logger.LogError(ex, "Error creating project from template");
+                    return Results.Problem(ex.Message, statusCode: 500);
                 }
             }
-
             return Results.Ok(templates);
         };
 

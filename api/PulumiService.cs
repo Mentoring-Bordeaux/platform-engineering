@@ -24,15 +24,9 @@ public class PulumiService
     public async Task<IResult> ExecuteTemplateAsync(CreateProjectRequest request)
     {
         string templateName = request.TemplateName;
-
-        // Pulumi environment variables are set per-process in RunCommandAsync to avoid global state/race conditions.
-        var pulumiHome = GetPulumiHome();
-        Directory.CreateDirectory(pulumiHome);
-
         var templateDir = Path.Combine(
             Directory.GetCurrentDirectory(),
-            pulumiHome,
-            "templates",
+            "pulumiPrograms/templates",
             templateName
         );
 
