@@ -17,7 +17,7 @@ export const useTemplates = () => {
     error.value = null
 
     try {
-      const response = await $fetch<RawTemplate[]>(`${apiBase}/templates`)
+      const response = await $fetch<RawTemplate[]>(`${apiBase}/api/templates`)
       // Normalize each raw template from API to properly typed template
       templates.value = response.map(normalizeTemplate)
     } catch (err) {
