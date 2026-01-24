@@ -219,7 +219,7 @@ const backend = new containerapp.ContainerApp(
                 value: client.subscriptionId 
             },
             { name: "NuxtAppUrl", 
-                value: staticApp.defaultHostname
+                value: pulumi.interpolate`https://${staticApp.defaultHostname}`
             },
           ],
         },
