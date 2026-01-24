@@ -98,6 +98,7 @@ public class PulumiService
         }
 
         string platformType = request.Platform.Type.ToLowerInvariant();
+        _logger.LogInformation("Executing platform Pulumi program for type: {PlatformType}", platformType);
         var platformDir = Path.Combine(
             Directory.GetCurrentDirectory(),
             "pulumiPrograms/platforms",
