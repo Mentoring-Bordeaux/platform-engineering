@@ -42,6 +42,29 @@ public class Program
 
         var app = builder.Build();
 
+        // Ajout d'un middleware CORS dynamique pour la production
+        if (!app.Environment.IsDevelopment())
+        {
+            app.Use(async (context, next) =>
+            {
+                var origin = context.Request.Headers["Origin"].ToString();
+                if (!string.IsNullOrEmpty(origin) && origin == nuxtAppUrl)
+                {
+                    context.Response.Headers["Access-Control-Allow-Origin"] = nuxtAppUrl;
+                    context.Response.Headers["Vary"] = "Origin";
+                }
+                if (context.Request.Method == "OPTIONS")
+                {
+                    context.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS";
+                    context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization";
+                    context.Response.StatusCode = 204;
+                    await context.Response.CompleteAsync();
+                    return;
+                }
+                await next();
+            });
+        }
+
         app.Logger.LogInformation(
             "Configuring CORS to allow requests from: {NuxtAppUrl}",
             nuxtAppUrl
