@@ -231,6 +231,14 @@ const backend = new containerapp.ContainerApp(
 ] },
 );
 
+const backendInfo = containerapp.getContainerAppOutput(
+  {
+    resourceGroupName: rg.name,
+    containerAppName: backend.name,
+  },
+  { dependsOn: [backend] },
+);
+
 // --- RBAC pour que Pulumi (MSI System Assigned) puisse créer/lire des Resource Groups ---
 // Contributor role
 const contributorRoleDefinitionId =
@@ -282,9 +290,13 @@ const staticWebAppDeploymentToken = staticWebAppSecrets.apply(
 
 export const staticWebUrl = staticApp.defaultHostname;
 export const staticWebAppName = staticApp.name;
-export const backendUrl = backend.latestRevisionFqdn.apply(
-  (fqdn) => `https://${fqdn}`,
-);
+export const backendUrl = backendInfo.apply(info => {
+  const fqdn = info.configuration?.ingress?.fqdn;
+  if (!fqdn) {
+    throw new Error("Container App ingress FQDN not available yet (configuration.ingress.fqdn is undefined).");
+  }
+  return `https://${fqdn}`;
+});
 export const resourceGroupName = rg.name;
 export const containerRegistryName = acr.name;
 export const containerAppName = backend.name;
