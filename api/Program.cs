@@ -9,10 +9,11 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        string nuxtAppUrl =
-            builder.Configuration["services:app:http:0"]
-            ?? builder.Configuration["NuxtAppUrl"]
-            ?? "http://localhost:3000";
+       string nuxtAppUrl =
+        builder.Configuration["NuxtAppUrl"]
+        ?? builder.Configuration["services:app:http:0"]
+        ?? "http://localhost:3000";
+
 
         // Configure CORS
         builder.Services.AddCors(options =>
@@ -40,32 +41,7 @@ public class Program
 
         builder.Services.AddOpenApi();
 
-        var app = builder.Build();
-
-        // Ajout d'un middleware CORS dynamique pour la production
-        if (!app.Environment.IsDevelopment())
-        {
-            app.Use(async (context, next) =>
-            {
-                var origin = context.Request.Headers["Origin"].ToString();
-                app.Logger.LogInformation($"[CORS] Origin: '{origin}', NuxtAppUrl: '{nuxtAppUrl}'");
-                if (!string.IsNullOrEmpty(origin) && origin == nuxtAppUrl)
-                {
-                    app.Logger.LogInformation($"[CORS] Adding Access-Control-Allow-Origin for: {origin}");
-                    context.Response.Headers["Access-Control-Allow-Origin"] = nuxtAppUrl;
-                    context.Response.Headers["Vary"] = "Origin";
-                }
-                if (context.Request.Method == "OPTIONS")
-                {
-                    context.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS";
-                    context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization";
-                    context.Response.StatusCode = 204;
-                    await context.Response.CompleteAsync();
-                    return;
-                }
-                await next();
-            });
-        }
+        var app = builder.Build();        
 
         app.Logger.LogInformation(
             "Configuring CORS to allow requests from: {NuxtAppUrl}",
