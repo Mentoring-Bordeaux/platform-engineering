@@ -48,8 +48,10 @@ public class Program
             app.Use(async (context, next) =>
             {
                 var origin = context.Request.Headers["Origin"].ToString();
+                app.Logger.LogInformation($"[CORS] Origin: '{origin}', NuxtAppUrl: '{nuxtAppUrl}'");
                 if (!string.IsNullOrEmpty(origin) && origin == nuxtAppUrl)
                 {
+                    app.Logger.LogInformation($"[CORS] Adding Access-Control-Allow-Origin for: {origin}");
                     context.Response.Headers["Access-Control-Allow-Origin"] = nuxtAppUrl;
                     context.Response.Headers["Vary"] = "Origin";
                 }
