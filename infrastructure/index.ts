@@ -269,16 +269,16 @@ const staticWebAppDeploymentToken = staticWebAppSecrets.apply(
   (secrets) => (secrets.properties ? secrets.properties["apiKey"] : undefined),
 );
 
-const staticSiteLinkedBackend = new azure_native.web.StaticSiteLinkedBackend(
-  "staticSiteLinkedBackend",
-  {
-    backendResourceId: backend.id,
-    linkedBackendName: "api",
-    name: staticApp.name,
-    region: staticApp.location,
-    resourceGroupName: rg.name,
-  },
-);
+// const staticSiteLinkedBackend = new azure_native.web.StaticSiteLinkedBackend(
+//   "staticSiteLinkedBackend",
+//   {
+//     backendResourceId: backend.id,
+//     linkedBackendName: "api",
+//     name: staticApp.name,
+//     region: staticApp.location,
+//     resourceGroupName: rg.name,
+//   },
+// );
 
 export const staticWebUrl = staticApp.defaultHostname;
 export const staticWebAppName = staticApp.name;
