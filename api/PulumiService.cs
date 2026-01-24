@@ -97,7 +97,7 @@ public class PulumiService
             };
         }
 
-        string platformType = request.Platform.Type;
+        string platformType = request.Platform.Type.ToLowerInvariant();
         var platformDir = Path.Combine(
             Directory.GetCurrentDirectory(),
             "pulumiPrograms/platforms",

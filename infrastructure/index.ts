@@ -240,9 +240,6 @@ const disableAuth = new containerapp.ContainerAppsAuthConfig(
 
     // Le plus direct : auth OFF
     platform: { enabled: false },
-
-    // (optionnel) si tu préfères laisser enabled:true mais autoriser anonymous:
-    // globalValidation: { unauthenticatedClientAction: "AllowAnonymous" as any },
   },
   { dependsOn: [backend] },
 );
@@ -292,17 +289,6 @@ const staticWebAppSecrets = web.listStaticSiteSecretsOutput({
 const staticWebAppDeploymentToken = staticWebAppSecrets.apply(
   (secrets) => (secrets.properties ? secrets.properties["apiKey"] : undefined),
 );
-
-// const staticSiteLinkedBackend = new azure_native.web.StaticSiteLinkedBackend(
-//   "staticSiteLinkedBackend",
-//   {
-//     backendResourceId: backend.id,
-//     linkedBackendName: "api",
-//     name: staticApp.name,
-//     region: staticApp.location,
-//     resourceGroupName: rg.name,
-//   },
-// );
 
 export const staticWebUrl = staticApp.defaultHostname;
 export const staticWebAppName = staticApp.name;
