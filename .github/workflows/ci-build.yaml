@@ -54,10 +54,10 @@ jobs:
             exit 1
           fi
 
-          echo "ACR_NAME=$containerAppName" >> $GITHUB_ENV
-          echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_ENV  
-          echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_ENV
-          echo "NUXT_API_URL=$backendUrl" >> $GITHUB_ENV 
+          echo "ACR_NAME=$containerAppName" >> $GITHUB_OUTPUT
+          echo "ACR_LOGIN_SERVER=$acrServer" >> $GITHUB_OUTPUT  
+          echo "ACR_REGISTRY_NAME=$containerRegistryName" >> $GITHUB_OUTPUT
+          echo "NUXT_API_URL=$backendUrl" >> $GITHUB_OUTPUT 
  
 
   backend: 
@@ -120,7 +120,7 @@ jobs:
         run: pnpm run build
         working-directory: ./app
         env:
-          NUXT_PUBLIC_API_URL: ${{ needs.download_infra_outputs.outputs.NUXT_API_URL }}
+          NUXT_API_URL: ${{ needs.download_infra_outputs.outputs.NUXT_API_URL }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
