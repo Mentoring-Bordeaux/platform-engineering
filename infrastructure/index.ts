@@ -230,6 +230,22 @@ const backend = new containerapp.ContainerApp(
       roleAssignmentKvSecretsUser, // UAI can read secrets
 ] },
 );
+// Désactiver l'auth built-in (sinon 401 + WWW-Authenticate: Bearer)
+const disableAuth = new containerapp.ContainerAppsAuthConfig(
+  `auth-${projectPrefix}-off`,
+  {
+    resourceGroupName: rg.name,
+    containerAppName: backend.name,
+    authConfigName: "current",
+
+    // Le plus direct : auth OFF
+    platform: { enabled: false },
+
+    // (optionnel) si tu préfères laisser enabled:true mais autoriser anonymous:
+    // globalValidation: { unauthenticatedClientAction: "AllowAnonymous" as any },
+  },
+  { dependsOn: [backend] },
+);
 
 const backendInfo = containerapp.getContainerAppOutput(
   {
