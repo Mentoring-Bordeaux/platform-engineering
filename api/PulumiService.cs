@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Text;
-using Microsoft.AspNetCore.Mvc;
 using Pulumi.Automation;
+
 
 public class PulumiService
 {
@@ -114,6 +114,7 @@ public class PulumiService
 
             var pulumiProjectName = TryGetPulumiProjectName(workingDir);
 
+
             string QualifyConfigKey(string key)
             {
                 if (string.IsNullOrWhiteSpace(key))
@@ -135,6 +136,7 @@ public class PulumiService
 
                 return key;
             }
+
             // Configurate the stack with parameters from the request (excluding "type")
             foreach (var kv in request.Parameters.Where(kv => kv.Key != "type"))
                 await stack.SetConfigAsync(QualifyConfigKey(kv.Key), new ConfigValue(kv.Value));
@@ -185,7 +187,17 @@ public class PulumiService
                     await stack.RemoveConfigAsync(existingKey);
                 }
             }
+            var frameworks = request.Parameters
+                    .Where(kv => kv.Key.Contains("framework", StringComparison.OrdinalIgnoreCase))
+                    .Select(kv => Enum.TryParse<FrameworkType>(kv.Value, true, out var fw) ? fw : (FrameworkType?)null)
+                    .Where(fw => fw.HasValue)
+                    .Select(fw => fw.Value)
+                    .ToList();
 
+            foreach (var fw in frameworks)
+            {
+                Console.WriteLine($"Processing framework: {fw}");
+            }
             var result = await stack.UpAsync(
                 new UpOptions
                 {
@@ -193,105 +205,66 @@ public class PulumiService
                     OnStandardError = Console.Error.WriteLine,
                 }
             );
-
             var outputs = result.Outputs.ToDictionary(kv => kv.Key, kv => kv.Value?.Value);
             if (resourceType.StartsWith("platforms/github") && outputs.TryGetValue("repoNameOutput", out var repoOutput))
             {
                 var repoName = repoOutput?.ToString();
                 if (!string.IsNullOrWhiteSpace(repoName))
-                {
                     PulumiGlobals.Outputs["githubRepoName"] = repoName;
-                }
             }
-
             if (resourceType.StartsWith("platforms/gitlab") && outputs.TryGetValue("repoUrl", out var gitlabRepoUrlOutput))
             {
                 var repoUrl = gitlabRepoUrlOutput?.ToString();
                 if (!string.IsNullOrWhiteSpace(repoUrl))
-                {
                     PulumiGlobals.Outputs["gitlabRepoUrl"] = repoUrl;
-                }
             }
-
             PulumiGlobals.Outputs.TryGetValue("githubRepoName", out var githubRepoName);
             PulumiGlobals.Outputs.TryGetValue("gitlabRepoUrl", out var gitlabRepoUrl);
-
             var hasGitHubRepo = !string.IsNullOrWhiteSpace(githubRepoName);
             var hasGitLabRepo = !string.IsNullOrWhiteSpace(gitlabRepoUrl);
-
-            // Expose the last-created repo to subsequent Pulumi programs.
-            // Prefer GitHub repo name if present, otherwise GitLab repo URL.
             if (hasGitHubRepo)
-            {
                 request.Parameters["targetRepo"] = githubRepoName!;
-            }
             else if (hasGitLabRepo)
-            {
                 request.Parameters["targetRepo"] = gitlabRepoUrl!;
-            }
-
             var isPlatformTemplate = resourceType.StartsWith("platforms/github") || resourceType.StartsWith("platforms/gitlab");
-
-            var shouldPushToGitHub =
-                request.Parameters.ContainsKey("githubToken")
-                && request.Parameters.ContainsKey("githubOrganizationName")
-                && (resourceType.StartsWith("platforms/github") ? hasGitHubRepo : (!isPlatformTemplate && hasGitHubRepo));
-
-            if (shouldPushToGitHub
-                && request.Parameters.TryGetValue("githubToken", out var token)
+            if (!string.IsNullOrWhiteSpace(githubRepoName)
+                && request.Parameters.TryGetValue("githubToken", out var githubToken)
                 && request.Parameters.TryGetValue("githubOrganizationName", out var orgName))
             {
-                var gitService = new GitHubService(token);
-                var repoToPush = githubRepoName!;
+                var gitHubService = new GitHubService(githubToken, orgName, githubRepoName);
 
-                if (!string.IsNullOrEmpty(request.Framework)
-                    && Enum.TryParse<FrameworkType>(request.Framework, true, out var frameworkType))
+                await gitHubService.InitializeRepoWithFrameworksAsync(
+                    frameworks,
+                    request.Name
+                );
+
+                if (!isPlatformTemplate && Directory.Exists(workingDir))
                 {
-                    await gitService.InitializeRepoWithFrameworkAsync(orgName, repoToPush, frameworkType, request.Name);
+                    await gitHubService.PushPulumiCodeAsync(orgName, githubRepoName, workingDir, request.Parameters, request.Name);
                 }
-
-                if (!isPlatformTemplate)
+                else if (!Directory.Exists(workingDir))
                 {
-                    if (Directory.Exists(workingDir))
-                    {
-                        await gitService.PushPulumiCodeAsync(orgName, repoToPush, workingDir, request.Parameters, request.Name);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Pulumi program path does not exist: {PulumiPath}", workingDir);
-                    }
+                    _logger.LogWarning("Pulumi program path does not exist: {PulumiPath}", workingDir);
                 }
             }
-
-            var shouldPushToGitLab =
-                request.Parameters.ContainsKey("gitlabToken")
-                && (resourceType.StartsWith("platforms/gitlab") ? hasGitLabRepo : (!isPlatformTemplate && hasGitLabRepo));
-
-            if (shouldPushToGitLab && request.Parameters.TryGetValue("gitlabToken", out var gitlabToken))
+            if (!string.IsNullOrWhiteSpace(gitlabRepoUrl)
+                && request.Parameters.TryGetValue("gitlabToken", out var gitlabToken))
             {
                 request.Parameters.TryGetValue("gitlabBaseUrl", out var gitlabBaseUrl);
-                var gitlabService = new GitLabService(gitlabToken, gitlabBaseUrl);
-
-                if (!string.IsNullOrEmpty(request.Framework)
-                    && Enum.TryParse<FrameworkType>(request.Framework, true, out var frameworkType))
+                var gitLabService = new GitLabService(gitlabToken, gitlabRepoUrl, gitlabBaseUrl);
+                await gitLabService.InitializeRepoWithFrameworksAsync(
+                        frameworks,
+                        request.Name
+                    );
+                if (!isPlatformTemplate && Directory.Exists(workingDir))
                 {
-                    await gitlabService.InitializeRepoWithFrameworkAsync(gitlabRepoUrl!, frameworkType, request.Name);
+                    await gitLabService.PushPulumiCodeAsync(gitlabRepoUrl, workingDir, request.Parameters, request.Name);
                 }
-
-                if (!isPlatformTemplate)
+                else if (!Directory.Exists(workingDir))
                 {
-                    if (Directory.Exists(workingDir))
-                    {
-                        await gitlabService.PushPulumiCodeAsync(gitlabRepoUrl!, workingDir, request.Parameters, request.Name);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Pulumi program path does not exist: {PulumiPath}", workingDir);
-                    }
+                    _logger.LogWarning("Pulumi program path does not exist: {PulumiPath}", workingDir);
                 }
             }
-
-
             return Results.Json(outputs);
         }
         catch (Exception ex)
@@ -375,6 +348,7 @@ public class PulumiService
 }
 public static class PulumiGlobals
 {
-
     public static Dictionary<string, string> Outputs = new Dictionary<string, string>();
 }
+
+

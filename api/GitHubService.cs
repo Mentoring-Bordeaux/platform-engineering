@@ -1,93 +1,55 @@
 using Octokit;
-using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using System.Text.RegularExpressions;
 
-public enum FrameworkType
-{
-    dotnet,
-    React,
-    Vue,
-    Nuxt,
-    JavaSpring
-}
-
-public class GitHubService
+public class GitHubService : GitRepositoryServiceBase
 {
     private readonly GitHubClient _client;
+    private readonly string _orgName;
+    private readonly string _repoName;
 
-    public GitHubService(string token)
+    public GitHubService(string token, string orgName, string repoName)
     {
         _client = new GitHubClient(new ProductHeaderValue("InfraAutomation"))
         {
             Credentials = new Credentials(token)
         };
+        _orgName = orgName;
+        _repoName = repoName;
     }
-    public async Task InitializeRepoWithFrameworkAsync(
+    public async Task PushPulumiCodeAsync(
         string orgName,
         string repoName,
-        FrameworkType framework,
-        string projectName)
+        string localPulumiPath,
+        Dictionary<string, string> parameters,
+        string name)
     {
-        string tempDir = Path.Combine(Path.GetTempPath(), projectName);
-        if (Directory.Exists(tempDir))
-            Directory.Delete(tempDir, true);
-        Directory.CreateDirectory(tempDir);
+        parameters["Name"] = name;
 
-        GenerateProjectByCli(framework, tempDir);
-
-        await PushDirectoryToGitHub(orgName, repoName, tempDir, "app");
-
-        Directory.Delete(tempDir, true);
-    }
-
-    private void GenerateProjectByCli(FrameworkType framework, string targetDir)
-    {
-        string args = framework switch
-        {
-            FrameworkType.dotnet => "new webapi -n app",
-            FrameworkType.React => "create vite@latest app -- --template react",
-            FrameworkType.Vue => "create vue@latest app",
-            FrameworkType.Nuxt => "nuxi init app",
-            FrameworkType.JavaSpring => "init app --build=maven --java-version=17",
-            _ => throw new ArgumentException("Framework non supporté")
-        };
-
-        string executable = framework switch
-        {
-            FrameworkType.dotnet => "dotnet",
-            FrameworkType.React or FrameworkType.Vue => "npm",
-            FrameworkType.Nuxt => "npx",
-            FrameworkType.JavaSpring => "spring",
-            _ => throw new ArgumentException("Unsupported framework")
-        };
-
-        RunCommand(executable, args, targetDir);
-    }
-
-    private void RunCommand(string fileName, string args, string workingDir)
-    {
-        var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
+        await PushPulumiAsync(
+            localPulumiPath,
+            parameters,
+            async (path, content) =>
             {
-                FileName = fileName,
-                Arguments = args,
-                WorkingDirectory = workingDir,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            }
-        };
+                try
+                {
+                    await _client.Repository.Content.CreateFile(
+                        orgName,
+                        repoName,
+                        path,
+                        new CreateFileRequest($"Add {path}", content, "main"));
+                }
+                catch (ApiException)
+                {
+                    var existing = await _client.Repository.Content
+                        .GetAllContentsByRef(orgName, repoName, path, "main");
 
-        process.Start();
-        string stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (process.ExitCode != 0)
-            throw new Exception($"Error executing the command {fileName} {args}:\n{stderr}");
+                    await _client.Repository.Content.UpdateFile(
+                        orgName,
+                        repoName,
+                        path,
+                        new UpdateFileRequest($"Update {path}", content, existing[0].Sha, "main"));
+                }
+            });
     }
-
     private async Task PushDirectoryToGitHub(string orgName, string repoName, string localPath, string targetRoot)
     {
         foreach (var filePath in Directory.GetFiles(localPath, "*", SearchOption.AllDirectories))
@@ -116,91 +78,9 @@ public class GitHubService
             }
         }
     }
-
-    public async Task PushPulumiCodeAsync(
-    string orgName,
-    string repoName,
-    string localPulumiPath,
-    Dictionary<string, string> parameters,
-    string Name)
+    protected override async Task PushFrameworkDirectoryAsync(string localPath, FrameworkType framework)
     {
-        parameters["Name"] = Name;
-        if (!Directory.Exists(localPulumiPath))
-            throw new DirectoryNotFoundException(localPulumiPath);
-        var allFiles = Directory.GetFiles(localPulumiPath, "*", SearchOption.AllDirectories)
-        .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}node_modules{Path.DirectorySeparatorChar}") &&
-                    !f.Contains($"{Path.DirectorySeparatorChar}node_modules"));
-
-        foreach (var filePath in allFiles)
-        {
-
-            var relativePath = Path
-            .Combine("infrastructure", Path.GetRelativePath(localPulumiPath, filePath))
-            .Replace("\\", "/");
-
-            string content = await File.ReadAllTextAsync(filePath);
-
-            foreach (var kv in parameters)
-            {
-                string value = kv.Value.Replace("\"", "\\\"");
-
-                content = Regex.Replace(
-                    content,
-                    $@"config\.require\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)",
-                    $"\"{value}\""
-                );
-
-                content = Regex.Replace(
-                    content,
-                    $@"config\.get\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)\s*(\|\|\s*[""'][^""']*[""'])?",
-                    $"\"{value}\""
-                );
-
-                content = Regex.Replace(
-                    content,
-                    $@"config\.get\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)",
-                    $"\"{value}\""
-                );
-                content = Regex.Replace(
-                    content,
-                    $@"config\.getSecret\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)",
-                    $"\"{value}\""
-                );
-
-            }
-
-
-            try
-            {
-                await _client.Repository.Content.CreateFile(
-                    orgName,
-                    repoName,
-                    relativePath,
-                    new CreateFileRequest(
-                        $"Add {relativePath}",
-                        content,
-                        "main"
-                    )
-                );
-            }
-            catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
-            {
-                var existing = await _client.Repository.Content
-                    .GetAllContentsByRef(orgName, repoName, relativePath, "main");
-
-                await _client.Repository.Content.UpdateFile(
-                    orgName,
-                    repoName,
-                    relativePath,
-                    new UpdateFileRequest(
-                        $"Update {relativePath}",
-                        content,
-                        existing[0].Sha,
-                        "main"
-                    )
-                );
-            }
-        }
+        await PushDirectoryToGitHub(_orgName, _repoName, localPath, framework.ToString());
     }
 
 }
