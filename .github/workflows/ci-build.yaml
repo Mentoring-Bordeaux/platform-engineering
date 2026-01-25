@@ -160,6 +160,7 @@ jobs:
           context: ./api
           file: ./api/Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}/platform-engineering-api:${{ env.IMAGE_TAG }}
             ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}/platform-engineering-api:latest
