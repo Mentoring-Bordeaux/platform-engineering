@@ -7,6 +7,8 @@ public class GitLabService : GitRepositoryServiceBase
 {
     private readonly HttpClient _http;
     private readonly string _projectPathOrUrl;
+
+    public string ProjectPathOrUrl => _projectPathOrUrl;
     public GitLabService(string token, string projectPathOrUrl, string? gitlabBaseUrl = null)
     {
         if (string.IsNullOrWhiteSpace(token))
@@ -44,8 +46,8 @@ public class GitLabService : GitRepositoryServiceBase
         };
         return builder.Uri.ToString();
     }
-    private sealed record ResolvedProject(int Id, string DefaultBranch);
-    private async Task<ResolvedProject> ResolveProjectAsync(string projectPathOrUrl)
+    public sealed record ResolvedProject(int Id, string DefaultBranch);
+    public async Task<ResolvedProject> ResolveProjectAsync(string projectPathOrUrl)
     {
         string idOrPath;
         if (int.TryParse(projectPathOrUrl, out _))

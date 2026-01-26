@@ -24,7 +24,7 @@ public abstract class GitRepositoryServiceBase : IGitRepositoryService
         }
     }
     protected async Task GenerateAndPushMultipleFrameworksAsync(
-     List<FrameworkType> frameworks,
+    List<FrameworkType> frameworks,
     string projectName,
     Func<string, Task> pushAction)
     {

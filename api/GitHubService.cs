@@ -6,6 +6,9 @@ public class GitHubService : GitRepositoryServiceBase
     private readonly string _orgName;
     private readonly string _repoName;
 
+    public string OrgName => _orgName;
+    public string RepoName => _repoName;
+
     public GitHubService(string token, string orgName, string repoName)
     {
         _client = new GitHubClient(new ProductHeaderValue("InfraAutomation"))

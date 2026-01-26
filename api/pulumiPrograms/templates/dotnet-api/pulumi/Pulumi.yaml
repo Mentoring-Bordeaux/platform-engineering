@@ -30,9 +30,5 @@ config:
   adminLogin:
     description: "SQL Server admin login"
     default: "sqladminuser"
-
-  adminPassword:
-    description: "SQL Server admin password"
-    secret: true
   
   

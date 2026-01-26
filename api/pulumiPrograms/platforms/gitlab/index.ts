@@ -5,7 +5,7 @@ const config = new pulumi.Config();
 
 // Required config
 const gitlabToken = config.require("gitlabToken");
-const projectName = config.require("Name");
+const projectName = config.require("name");
 
 // Optional config
 const description = config.get("description") ?? "Managed by Pulumi Automation API.";

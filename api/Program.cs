@@ -75,49 +75,76 @@ public class Program
             {
                 // Prepare injected credentials
                 var injectedCredentials = new Dictionary<string, string>();
+                IGitRepositoryService? gitService = null;
 
-                // GitHub credentials
-                string githubToken = app.Configuration["GitHubToken"] ?? "";
-                string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
-                if (HasRealConfigValue(githubToken))
+                if (request.Platform != null && !string.IsNullOrWhiteSpace(request.Platform.Type))
                 {
-                    injectedCredentials["githubToken"] = githubToken;
-                }
-                if (HasRealConfigValue(githubOrganizationName))
-                {
-                    injectedCredentials["githubOrganizationName"] = githubOrganizationName;
-                }
+                    var platformType = request.Platform.Type.Trim().ToLowerInvariant();
 
-                // GitLab credentials
-                string gitlabToken = app.Configuration["GitLabToken"] ?? "";
-                string gitlabBaseUrl = app.Configuration["GitLabBaseUrl"] ?? "";
-                if (HasRealConfigValue(gitlabToken))
-                {
-                    injectedCredentials["gitlabToken"] = gitlabToken;
-                }
-                if (HasValidHttpUrl(gitlabBaseUrl))
-                {
-                    injectedCredentials["gitlabBaseUrl"] = gitlabBaseUrl;
+                    if (platformType == "github")
+                    {
+                        var githubToken = app.Configuration["GitHubToken"];
+                        var githubOrg = app.Configuration["GitHubOrganizationName"];
+
+                        if (!HasRealConfigValue(githubToken) || !HasRealConfigValue(githubOrg))
+                        {
+                            return Results.BadRequest(new ResultPulumiAction
+                            {
+                                Name = request.ProjectName,
+                                ResourceType = "GitHub",
+                                StatusCode = 400,
+                                Message = "GitHubToken or GitHubOrganizationName is missing in configuration."
+                            });
+                        }
+
+                        injectedCredentials["githubToken"] = githubToken!;
+                        injectedCredentials["githubOrganizationName"] = githubOrg!;
+
+                        gitService = new GitHubService(
+                            githubToken!,
+                            githubOrg!,
+                            request.ProjectName
+                        );
+                    }
+                    else if (platformType == "gitlab")
+                    {
+                        var gitlabToken = app.Configuration["GitLabToken"];
+                        var gitlabBaseUrl = app.Configuration["GitLabBaseUrl"];
+
+                        if (!HasRealConfigValue(gitlabToken) || !HasValidHttpUrl(gitlabBaseUrl))
+                        {
+                            return Results.BadRequest(new ResultPulumiAction
+                            {
+                                Name = request.ProjectName,
+                                ResourceType = "GitLab",
+                                StatusCode = 400,
+                                Message = "GitLabToken or GitLabBaseUrl is missing or invalid in configuration."
+                            });
+                        }
+
+                        injectedCredentials["gitlabToken"] = gitlabToken!;
+                        injectedCredentials["gitlabBaseUrl"] = gitlabBaseUrl!;
+                        gitService = new GitLabService(
+                            gitlabToken!,
+                            request.ProjectName,
+                            gitlabBaseUrl
+                        );
+                    }
+                    else
+                    {
+                        return Results.BadRequest(new ResultPulumiAction
+                        {
+                            Name = request.ProjectName,
+                            ResourceType = "Unknown",
+                            StatusCode = 400,
+                            Message = $"Unsupported platform type: {request.Platform.Type}"
+                        });
+                    }
                 }
 
                 var results = new List<ResultPulumiAction>();
 
-                // Step 1: Execute template
-                logger.LogInformation(
-                    "Executing template '{TemplateName}' for project '{ProjectName}'",
-                    request.TemplateName,
-                    request.ProjectName
-                );
-                var templateResult = await pulumiService.ExecuteTemplateAsync(request);
-                results.Add(templateResult);
-
-                if (templateResult.StatusCode >= 400)
-                {
-                    logger.LogError("Template execution failed: {Message}", templateResult.Message);
-                    return Results.Json(results, statusCode: templateResult.StatusCode);
-                }
-
-                // Step 2: Execute platform (if provided)
+                // Step 1: Execute platform (if provided)
                 if (request.Platform != null && !string.IsNullOrWhiteSpace(request.Platform.Type))
                 {
                     logger.LogInformation(
@@ -127,7 +154,8 @@ public class Program
                     );
                     var platformResult = await pulumiService.ExecutePlatformAsync(
                         request,
-                        injectedCredentials
+                        injectedCredentials,
+                        gitService!
                     );
                     results.Add(platformResult);
 
@@ -139,6 +167,44 @@ public class Program
                         );
                         return Results.Json(results, statusCode: platformResult.StatusCode);
                     }
+                    string? gitUrl = platformResult.Outputs?.TryGetValue("repoUrl", out var repoUrlObj) == true
+                                ? repoUrlObj?.ToString()
+                                : null;
+
+                    if (!string.IsNullOrEmpty(gitUrl))
+                    {
+                        if (request.Platform.Type.Trim().ToLowerInvariant() == "gitlab")
+                            gitService = new GitLabService(injectedCredentials["gitlabToken"], gitUrl, injectedCredentials["gitlabBaseUrl"]);
+
+                        // Étape 2 : initialiser les frameworks
+                        var frameworks = request.Parameters
+                                           .Where(kv => kv.Key.Contains("framework", StringComparison.OrdinalIgnoreCase))
+                                           .Select(kv => Enum.TryParse<FrameworkType>(kv.Value?.ToString() ?? "", true, out var fw) ? fw : (FrameworkType?)null)
+                                           .Where(fw => fw.HasValue)
+                                           .Select(fw => fw!.Value)
+                                           .ToList();
+
+                        if (frameworks.Any())
+                            await pulumiService.InitializeRepo(request.ProjectName!, frameworks, gitService!);
+                    }
+                }
+
+                // Step 2: Execute template
+                logger.LogInformation(
+                    "Executing template '{TemplateName}' for project '{ProjectName}'",
+                    request.TemplateName,
+                    request.ProjectName
+                );
+                var templateResult = await pulumiService.ExecuteTemplateAsync(
+                    request,
+                    gitService!
+                );
+                results.Add(templateResult);
+
+                if (templateResult.StatusCode >= 400)
+                {
+                    logger.LogError("Template execution failed: {Message}", templateResult.Message);
+                    return Results.Json(results, statusCode: templateResult.StatusCode);
                 }
 
                 logger.LogInformation(

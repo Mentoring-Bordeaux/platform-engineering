@@ -4,11 +4,11 @@ import * as appinsights from "@pulumi/azure-native/applicationinsights";
 
 const config = new pulumi.Config();
 const name = config.require("Name");
-const location = config.get("location") || "westeurope";
-const dotnetVersion = config.get("dotnetVersion") || "8.0";
+const location = "francecentral";
+const dotnetVersion = config.get("dotnetVersion") || "10.0";
 const sku = config.get("sku") || "B1";
-const adminPassword = config.getSecret("adminPassword");
-const adminLogin = config.get("adminLogin") || "sqladminuser";
+const adminLogin = config.require("adminLogin") || "sqladminuser";
+const adminPassword = config.requireSecret("adminPassword");
 
 const resourceGroup = new azure.resources.ResourceGroup(`${name}-rg`, {
     location,
@@ -16,7 +16,7 @@ const resourceGroup = new azure.resources.ResourceGroup(`${name}-rg`, {
 
 const clientConfig = azure.authorization.getClientConfig();
 
-const kv = new azure.keyvault.Vault(`${name}-kv`, {
+const kv = new azure.keyvault.Vault(`kv-${name}`, {
     resourceGroupName: resourceGroup.name,
     location,
     properties: {
@@ -27,7 +27,7 @@ const kv = new azure.keyvault.Vault(`${name}-kv`, {
     },
 });
 
-const sqlServer = new azure.sql.Server(`${name}-sqlserver`, {
+const sqlServer = new azure.sql.Server(`sqlserver-${name}-`, {
     resourceGroupName: resourceGroup.name,
     location,
     administratorLogin: adminLogin,
@@ -35,14 +35,14 @@ const sqlServer = new azure.sql.Server(`${name}-sqlserver`, {
     version: "12.0",
 });
 
-const database = new azure.sql.Database(`${name}-db`, {
+const database = new azure.sql.Database(`db-${name}-`, {
     resourceGroupName: resourceGroup.name,
     location,
     serverName: sqlServer.name,
     sku: { name: "S0", tier: "Standard" },
 });
 
-const logWorkspace = new azure.operationalinsights.Workspace(`${name}-law`, {
+const logWorkspace = new azure.operationalinsights.Workspace(`law-${name}-`, {
     resourceGroupName: resourceGroup.name,
     location,
     sku: { name: "PerGB2018" },
@@ -50,14 +50,14 @@ const logWorkspace = new azure.operationalinsights.Workspace(`${name}-law`, {
 });
 
 
-const appServicePlan = new azure.web.AppServicePlan(`${name}-plan`, {
+const appServicePlan = new azure.web.AppServicePlan(`plan-${name}-`, {
     resourceGroupName: resourceGroup.name,
     location,
     sku: { name: sku, tier: "Basic", capacity: 1 },
     kind: "app", // Windows
 });
 
-const apiApp = new azure.web.WebApp(`${name}-api`, {
+const apiApp = new azure.web.WebApp(`api-${name}-`, {
     resourceGroupName: resourceGroup.name,
     location,
     serverFarmId: appServicePlan.id,
@@ -70,7 +70,7 @@ const apiApp = new azure.web.WebApp(`${name}-api`, {
     },
 });
 
-const appInsights = new appinsights.Component(`${name}-ai`, {
+const appInsights = new appinsights.Component(`ai-${name}-`, {
     resourceGroupName: resourceGroup.name,
     location,
     applicationType: "web",
