@@ -5,7 +5,7 @@ import type { Platform } from '~/types'
  */
 export const PLATFORMS = {
   github: {
-    type: 'github',
+    type: 'GitHub',
     icon: 'devicon:github',
     config: {
       name: {
@@ -29,13 +29,13 @@ export const PLATFORMS = {
     }
   },
   gitlab: {
-    type: 'gitlab',
+    type: 'GitLab',
     icon: 'devicon:gitlab',
     config: {
       name: {
         type: 'text',
         label: 'Repository Name',
-        description: 'The name of the Gitlab repository to create.',
+        description: 'The name of the GitLab repository to create.',
         required: true
       },
       description: {

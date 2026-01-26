@@ -10,13 +10,13 @@ parameters:
     label: Project Name
     displayName: Project Name
     description: The name prefix for all resources.
-  location:
-    type: text
-    required: false
-    label: Location
-    displayName: Azure Location
-    description: Azure region where resources will be created.
-    default: francecentral
+  framework:
+      type: text
+      required: true
+      label: Framework
+      displayName: Framework
+      description: The framework used for the Api.
+      default: dotnet
   dotnetVersion:
     type: enum
     required: false

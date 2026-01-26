@@ -277,7 +277,7 @@ public class PulumiService
 
                 return key;
             }
-
+                                             
             // Remove stale config keys from previous runs
             var desiredKeys = parameters
                 .Keys.Where(k => k != "type")

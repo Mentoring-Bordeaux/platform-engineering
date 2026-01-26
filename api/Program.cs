@@ -103,7 +103,7 @@ public class Program
                         gitService = new GitHubService(
                             githubToken!,
                             githubOrg!,
-                            request.ProjectName
+                            request.ProjectName!
                         );
                     }
                     else if (platformType == "gitlab")
@@ -170,11 +170,16 @@ public class Program
                     string? gitUrl = platformResult.Outputs?.TryGetValue("repoUrl", out var repoUrlObj) == true
                                 ? repoUrlObj?.ToString()
                                 : null;
+                    string? actualRepoName = platformResult.Outputs?.TryGetValue("repoNameOutput", out var repoNameObj) == true
+                    ? repoNameObj?.ToString()
+                    : null;
 
                     if (!string.IsNullOrEmpty(gitUrl))
                     {
                         if (request.Platform.Type.Trim().ToLowerInvariant() == "gitlab")
                             gitService = new GitLabService(injectedCredentials["gitlabToken"], gitUrl, injectedCredentials["gitlabBaseUrl"]);
+                        if (request.Platform.Type.Trim().ToLowerInvariant() == "github")
+                            gitService = new GitHubService(injectedCredentials["githubToken"], injectedCredentials["githubOrganizationName"],actualRepoName!); 
 
                         // Étape 2 : initialiser les frameworks
                         var frameworks = request.Parameters
