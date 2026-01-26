@@ -71,6 +71,7 @@ public class PulumiService
                 Message = $"Pulumi program not found in template '{templateName}'",
             };
         }
+        request.Parameters["ProjectName"] = request.ProjectName;
 
         var result = await ExecuteInternalAsync(pulumiProgramDir, request.ProjectName, "template", request.Parameters, gitService, templateName);
         return result;
@@ -277,7 +278,6 @@ public class PulumiService
 
                 return key;
             }
-                                             
             // Remove stale config keys from previous runs
             var desiredKeys = parameters
                 .Keys.Where(k => k != "type")
