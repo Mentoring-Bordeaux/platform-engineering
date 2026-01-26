@@ -70,8 +70,7 @@ FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# Final Stage
-FROM base AS final
+FROM mcr.microsoft.com/dotnet/sdk:10.0.100-rc.2 AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
