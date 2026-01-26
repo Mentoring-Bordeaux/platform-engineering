@@ -16,6 +16,7 @@ const pulumiAccessToken = cfg.requireSecret("PULUMI_ACCESS_TOKEN");
 const githubToken = cfg.requireSecret("GithubToken");
 const gitlabToken = cfg.requireSecret("GitLabToken");
 const githubOrganizationName = cfg.requireSecret("GitHubOrganizationName");
+const gitlabBaseUrl = cfg.requireSecret("GitLabBaseUrl");
 
 const rg = new resources.ResourceGroup(`rg-${projectPrefix}-`);
 
@@ -102,6 +103,7 @@ const kvSecrets: Record<string, pulumi.Input<string>> = {
   "github-token": githubToken,
   "gitlab-token": gitlabToken,
   "github-organization-name": githubOrganizationName,
+  "gitlab-base-url": gitlabBaseUrl,
 };
 
 const createdKvSecrets: Record<string, keyvault.Secret> = {};
@@ -201,6 +203,11 @@ const backend = new containerapp.ContainerApp(
           identity: identity.id,
           keyVaultUrl: kvSecretUris["github-organization-name"],
         },
+        {
+          name: "gitlab-base-url",
+          identity: identity.id,
+          keyVaultUrl: kvSecretUris["gitlab-base-url"],
+        },
       ],
     },
     template: {
@@ -241,6 +248,10 @@ const backend = new containerapp.ContainerApp(
             },
             { name: "NuxtAppUrl", 
                 value: pulumi.interpolate`https://${staticApp.defaultHostname}`
+            },
+            {
+              name: "GitLabBaseUrl",
+              secretRef: "gitlab-base-url",
             },
           ],
         },

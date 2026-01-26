@@ -8,3 +8,5 @@ config:
     secure: AAABAGmY1cHYtu73vaT/YbZJNzZlKo42VTai3NFCBvc/eWtkkObS7iyUS0sMhbOKl2MFOXKJkfAtp6FBu8m7BwO6gfBV2oU8gColHl+vvMR+P5fxXsv9Sj4=
   platform-engineering-infra:GitHubOrganizationName:
     secure: AAABANvPc7Xxz4l3iMAZYzpZHoaVs6JdvJbD28KPNh8Fj3cJjSxsQjN6DDmtXKv814yrxXMrGtTIoepp
+  platform-engineering-infra:GitLabBaseUrl:
+    secure: AAABACDWck1b01qtxQMCqH9gTrDEmLCrx2YpbZzrMTyfS99qkvg/v/frW8lmIQJ0rVQ=
