@@ -91,6 +91,7 @@ const raKvSecretsOfficerCurrentUser = new authorization.RoleAssignment(
     principalId: client.objectId, // user en local, SP/Federated dans GH Actions
     roleDefinitionId: keyVaultSecretsOfficerRoleDefinitionId,
     scope: vault.id,
+    principalType: "ServicePrincipal",
   },
   { dependsOn: [vault] },
 );
