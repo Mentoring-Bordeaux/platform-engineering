@@ -1,9 +1,8 @@
-import type { Platform, Resource } from '~/types'
-// import type { Preset } from './presets'
+import type { Platform, Template } from '~/types'
 
 export interface ProjectOptions {
   name: string
   description?: string
-  resources: Resource[]
+  template: Template
   platform: Platform
 }

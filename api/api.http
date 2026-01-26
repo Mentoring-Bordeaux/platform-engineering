@@ -1,49 +1,62 @@
 @api_HostAddress = https://localhost:5064
 
-### Create a GitHub repository (platform)
+### Create a template only (e.g., ecommerce)
 POST {{api_HostAddress}}/create-project
 Content-Type: application/json
-Accept: application/json
 
-[
-    {
-        "name": "my-github-repo",
-        "resourceType": "platforms//github",
-        "parameters": {
-            "description": "Repo created via Pulumi",
+{
+    "templateName": "ecommerce",
+    "projectName": "my-ecommerce-app",
+    "parameters": {
+        "location": "westeurope",
+        "tier": "standard"
+    }
+}
+
+### Create a template with GitHub repository
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+
+{
+    "templateName": "ecommerce",
+    "projectName": "my-ecommerce-app",
+    "parameters": {
+        "location": "westeurope",
+        "tier": "standard"
+    },
+    "platform": {
+        "type": "github",
+        "name": "my-awesome-repo",
+        "config": {
+            "description": "My ecommerce app",
             "isPrivate": "true"
         }
     }
-]
+}
 
-### Create a GitLab repository (platform)
+### Create a template with GitLab repository
 POST {{api_HostAddress}}/create-project
 Content-Type: application/json
-Accept: application/json
 
-[
-    {
+{
+    "templateName": "enseirb",
+    "projectName": "my-enseirb-project",
+    "parameters": {
+        "databaseType": "postgresql"
+    },
+    "platform": {
+        "type": "gitlab",
         "name": "my-gitlab-project",
-        "resourceType": "platforms//gitlab",
-        "parameters": {
-            "description": "Project created via Pulumi",
-            "isPrivate": "true"
+        "config": {
+            "description": "My ENSEIRB project",
+            "isPrivate": "true",
+            "visibility": "private"
         }
     }
-]
+}
 
-### Create a static web app (resource)
-POST {{api_HostAddress}}/create-project
-Content-Type: application/json
-Accept: application/json
-
-[
-    {
-        "name": "nomenminiscule",
-        "resourceType": "resources//static-web-app",
-        "parameters": {}
-    }
-]
+### Get available templates
+GET {{api_HostAddress}}/templates
 
 ### Create a static website on Azure Storage (Pulumi: pulumiPrograms/resources/static-web-site)
 POST {{api_HostAddress}}/create-project

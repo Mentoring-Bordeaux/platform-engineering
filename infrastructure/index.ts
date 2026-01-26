@@ -219,7 +219,7 @@ const backend = new containerapp.ContainerApp(
                 value: client.subscriptionId 
             },
             { name: "NuxtAppUrl", 
-                value: staticApp.defaultHostname
+                value: pulumi.interpolate`https://${staticApp.defaultHostname}`
             },
           ],
         },
@@ -229,6 +229,27 @@ const backend = new containerapp.ContainerApp(
   { dependsOn: [roleAssignment, // ACR pull
       roleAssignmentKvSecretsUser, // UAI can read secrets
 ] },
+);
+// Désactiver l'auth built-in (sinon 401 + WWW-Authenticate: Bearer)
+const disableAuth = new containerapp.ContainerAppsAuthConfig(
+  `auth-${projectPrefix}-off`,
+  {
+    resourceGroupName: rg.name,
+    containerAppName: backend.name,
+    authConfigName: "current",
+
+    // Le plus direct : auth OFF
+    platform: { enabled: false },
+  },
+  { dependsOn: [backend] },
+);
+
+const backendInfo = containerapp.getContainerAppOutput(
+  {
+    resourceGroupName: rg.name,
+    containerAppName: backend.name,
+  },
+  { dependsOn: [backend] },
 );
 
 // --- RBAC pour que Pulumi (MSI System Assigned) puisse créer/lire des Resource Groups ---
@@ -269,22 +290,15 @@ const staticWebAppDeploymentToken = staticWebAppSecrets.apply(
   (secrets) => (secrets.properties ? secrets.properties["apiKey"] : undefined),
 );
 
-const staticSiteLinkedBackend = new azure_native.web.StaticSiteLinkedBackend(
-  "staticSiteLinkedBackend",
-  {
-    backendResourceId: backend.id,
-    linkedBackendName: "api",
-    name: staticApp.name,
-    region: staticApp.location,
-    resourceGroupName: rg.name,
-  },
-);
-
 export const staticWebUrl = staticApp.defaultHostname;
 export const staticWebAppName = staticApp.name;
-export const backendUrl = backend.latestRevisionFqdn.apply(
-  (fqdn) => `https://${fqdn}`,
-);
+export const backendUrl = backendInfo.apply(info => {
+  const fqdn = info.configuration?.ingress?.fqdn;
+  if (!fqdn) {
+    throw new Error("Container App ingress FQDN not available yet (configuration.ingress.fqdn is undefined).");
+  }
+  return `https://${fqdn}`;
+});
 export const resourceGroupName = rg.name;
 export const containerRegistryName = acr.name;
 export const containerAppName = backend.name;

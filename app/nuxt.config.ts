@@ -29,7 +29,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       // URL of the API server in .NET
-      apiBase: process.env.NUXT_API_URL || '/api'
+      apiBase: (process.env.NUXT_API_URL ? process.env.NUXT_API_URL + '/api' : '/api')
     }
   }
 })

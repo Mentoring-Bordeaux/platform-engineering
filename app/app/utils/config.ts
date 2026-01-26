@@ -1,7 +1,6 @@
 import type { Field } from '~/types'
 
-
-// Return an initial value based on field type 
+// Return an initial value based on field type
 // '' for text-based fields, null otherwise
 const initializeFieldValue = (type: string | undefined) => {
   switch (type) {
