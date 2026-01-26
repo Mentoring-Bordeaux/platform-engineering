@@ -12,7 +12,7 @@ public static class ProjectScaffoldingUtils
             FrameworkType.Vue => "create vue@latest app",
             FrameworkType.Nuxt => "nuxi init app",
             FrameworkType.JavaSpring => "init app --build=maven --java-version=17",
-            _ => throw new ArgumentException("Framework non supporté")
+            _ => throw new ArgumentException("Unsupported framework")
         };
 
         string executable = framework switch
