@@ -164,5 +164,3 @@ jobs:
           tags: |
             ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}/platform-engineering-api:${{ env.IMAGE_TAG }}
             ${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}/platform-engineering-api:latest
-          cache-from: type=registry,ref=${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache
-          cache-to: type=registry,ref=${{ needs.download_infra_outputs.outputs.ACR_LOGIN_SERVER }}/platform-engineering-api:buildcache,mode=max
