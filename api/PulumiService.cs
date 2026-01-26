@@ -95,7 +95,10 @@ public class PulumiService
         }
 
         string platformType = request.Platform.Type.ToLowerInvariant();
-        _logger.LogInformation("Executing platform Pulumi program for type: {PlatformType}", platformType);
+        _logger.LogInformation(
+            "Executing platform Pulumi program for type: {PlatformType}",
+            platformType
+        );
         var platformDir = Path.Combine(
             Directory.GetCurrentDirectory(),
             "pulumiPrograms/platforms",
@@ -275,7 +278,6 @@ public class PulumiService
                 return key;
             }
 
-            
             // Remove stale config keys from previous runs
             var desiredKeys = parameters
                 .Keys.Where(k => k != "type")

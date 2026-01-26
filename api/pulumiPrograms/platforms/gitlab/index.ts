@@ -5,10 +5,11 @@ const config = new pulumi.Config();
 
 // Required config
 const gitlabToken = config.require("gitlabToken");
-const projectName = config.require("name");
+const repoName = config.require("name");
 
 // Optional config
-const description = config.get("description") ?? "Managed by Pulumi Automation API.";
+const description =
+    config.get("description") ?? "Managed by Pulumi Automation API.";
 const isPrivate = config.getBoolean("isPrivate") ?? true;
 
 // Create under a specific group/namespace if provided (numeric ID).
@@ -18,25 +19,25 @@ const namespaceId = config.getNumber("namespaceId");
 const baseUrl = config.get("gitlabBaseUrl");
 
 const providerArgs: gitlab.ProviderArgs = {
-  token: gitlabToken,
-  ...(baseUrl ? { baseUrl } : {}),
+    token: gitlabToken,
+    ...(baseUrl ? { baseUrl } : {}),
 };
 
 const provider = new gitlab.Provider("gitlab-provider", providerArgs);
 
 const project = new gitlab.Project(
-  projectName,
-  {
-    name: projectName,
-    description,
-    visibilityLevel: isPrivate ? "private" : "public",
-    initializeWithReadme: true,
-    ...(namespaceId !== undefined ? { namespaceId } : {}),
-  },
-  {
-    provider,
-    retainOnDelete: true,
-  }
+    repoName,
+    {
+        name: repoName,
+        description,
+        visibilityLevel: isPrivate ? "private" : "public",
+        initializeWithReadme: true,
+        ...(namespaceId !== undefined ? { namespaceId } : {}),
+    },
+    {
+        provider,
+        retainOnDelete: true,
+    },
 );
 
 export const repoNameOutput = project.name;

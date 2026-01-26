@@ -23,7 +23,10 @@
     @submit="onSubmit"
   >
     <!-- Template Parameters Section -->
-    <FormSection title="Template Configuration">
+    <FormSection
+      title="Template Configuration"
+      class="capitalize"
+    >
       <UFormField
         v-for="(paramOption, paramKey) in templateParameters"
         :key="`template-param-${paramKey}`"
@@ -41,18 +44,10 @@
     </FormSection>
 
     <!-- Platform Configuration -->
-    <FormSection :title="`${platform.type} Configuration`">
-      <UFormField
-        name="platform.name"
-        label="Repository Name"
-        required
-      >
-        <UInput
-          v-model="state.platform.name"
-          placeholder="Enter repo name"
-          class="w-full"
-        />
-      </UFormField>
+    <FormSection
+      :title="`${platform.type} Configuration`"
+      class="capitalize"
+    >
       <UFormField
         v-for="(configOption, configKey) in platform.config"
         :key="`platform-${platform.type}-${configOption.label}-${configKey}`"
@@ -129,7 +124,6 @@ const validationSchema = computed(() =>
 interface ConfigurationFormState {
   parameters: Record<string, unknown>
   platform: {
-    name: string
     type: string
     config: Record<string, unknown>
   }
@@ -138,7 +132,6 @@ interface ConfigurationFormState {
 const state = reactive<ConfigurationFormState>({
   parameters: generateDefaultConfig(templateParameters.value),
   platform: {
-    name: '',
     type: platform.value.type,
     config: generateDefaultConfig(platform.value.config)
   }
@@ -182,7 +175,6 @@ async function onSubmit() {
       parameters: state.parameters,
       platform: {
         type: state.platform.type,
-        name: state.platform.name,
         config: state.platform.config
       }
     }
