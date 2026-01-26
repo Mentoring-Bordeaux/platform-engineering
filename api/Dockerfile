@@ -78,22 +78,30 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 
 USER root
-COPY --from=sdk /usr/share/dotnet /usr/share/dotnet
-RUN ln -sf /usr/share/dotnet/dotnet /usr/bin/dotnet \
-    && mkdir -p /app/.dotnet \
-    && chown -R ${APP_UID}:0 /app/.dotnet
 
-ENV DOTNET_CLI_HOME=/app/.dotnet \
+# Copy SDK into runtime image
+COPY --from=sdk /usr/share/dotnet /usr/share/dotnet
+
+# Ensure dotnet host can discover SDKs
+RUN mkdir -p /etc/dotnet \
+    && echo "/usr/share/dotnet" > /etc/dotnet/install_location \
+    && ln -sf /usr/share/dotnet/dotnet /usr/bin/dotnet
+
+# Make discovery explicit (important in container environments)
+ENV DOTNET_ROOT=/usr/share/dotnet \
+    PATH="/usr/share/dotnet:${PATH}" \
+    DOTNET_CLI_HOME=/app/.dotnet \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     DOTNET_NOLOGO=1 \
     DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-USER ${APP_UID}
+RUN mkdir -p /app/.dotnet \
+    && chown -R ${APP_UID}:0 /app/.dotnet
 
+USER ${APP_UID}
 
 # Copy all pulumiPrograms content (including any node_modules) recursively
 COPY --from=deps /pulumiPrograms /app/pulumiPrograms
-
 # COPY runs as root and produces root-owned files; fix ownership so the runtime
 # non-root user can write temp files (pnpm creates _tmp_* files in the project dir).
 USER root
