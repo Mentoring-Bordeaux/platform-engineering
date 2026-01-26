@@ -1,0 +1,103 @@
+schemaVersion: 1.0.0
+kind: Template
+name: enseirb
+displayName: Enseirb
+description: Template for an e-commerce application
+parameters:
+  app:
+    framework:
+      type: enum
+      required: true
+      label: Framework
+      displayName: Framework
+      description: The framework used for the Static Web App.
+      values:
+        - vanilla
+        - react
+        - vue
+        - angular
+        - svelte
+        - nextjs
+        - nuxtjs
+      default: vanilla
+    description:
+      type: textarea
+      required: false
+      label: Application Description
+      displayName: Application Description
+      description: A brief description of the e-commerce application.
+      default: An e-commerce application built with a modern framework.
+  capacity:
+    type: number
+    required: false
+    label: Database Capacity (RU/s)
+    displayName: Database Capacity (RU/s)
+    description: The throughput capacity for the Cosmos DB.
+    default: 400
+  admin:
+    description:
+      type: textarea
+      required: false
+      label: Admin Panel Description
+      displayName: Admin Panel Description
+      description: A brief description of the admin panel for managing the e-commerce application.
+      default: An admin panel for managing the e-commerce application.
+  backend:
+    runtimeStack:
+      type: enum
+      required: true
+      label: Runtime Stack
+      displayName: Runtime Stack
+      description: The runtime stack for the backend API.
+      values:
+        - NODE|14-lts
+        - DOTNETCORE|3.1
+        - PYTHON|3.8
+        - JAVA|11
+      default: NODE|14-lts
+    api:
+      mainApi:
+        description:
+          type: textarea
+          required: false
+          label: Main Backend API Description
+          displayName: Main Backend API Description
+          description: A brief description of the main backend API for the e-commerce application.
+          default: A main backend API for the e-commerce application.
+        enableCaching:
+          type: boolean
+          required: false
+          label: Enable Caching
+          displayName: Enable Caching
+          description: Enable caching for the main API.
+          default: true
+      billingApi:
+        description:
+          type: textarea
+          required: false
+          label: Billing API Description
+          displayName: Billing API Description
+          description: A brief description of the billing API for the e-commerce application.
+          default: A billing API for the e-commerce application.
+        paymentGateway:
+          type: enum
+          required: false
+          label: Payment Gateway
+          displayName: Payment Gateway
+          description: The payment gateway to use for the billing API.
+          values:
+            - Stripe
+            - PayPal
+            - Square
+          default: Stripe
+resources:
+  - type: azure.swa
+    name: my-ecommerce-app
+  - type: azure.cosmosdb
+    name: my-ecommerce-db
+  - type: azure.swa
+    name: ecommerce-admin-panel
+  - type: azure.azure-app-service
+    name: ecommerce-backend-api
+  - type: azure.azure-app-service
+    name: ecommerce-billing-api

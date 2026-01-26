@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import type { Field, Platform, Resource } from '~/types'
+import type { Field, Platform } from '~/types'
 import type { ProjectOptions } from '~/config/project-options'
+import { flattenTemplateParameters } from '~/types'
 
 /**
  * Generate a Zod schema for a single field based on its type and constraints
@@ -80,22 +81,6 @@ export function generateFieldSchema(field: Field): z.ZodTypeAny {
 }
 
 /**
- * Generate a Zod schema for a resource configuration
- */
-export function generateResourceConfigSchema(resource: Resource) {
-  const configShape: Record<string, z.ZodTypeAny> = {}
-
-  Object.entries(resource.config).forEach(([key, field]) => {
-    configShape[key] = generateFieldSchema(field)
-  })
-
-  return z.object({
-    name: z.string(),
-    config: z.object(configShape)
-  })
-}
-
-/**
  * Generate a Zod schema for a platform configuration
  */
 export function generatePlatformConfigSchema(platform: Platform) {
@@ -106,7 +91,7 @@ export function generatePlatformConfigSchema(platform: Platform) {
   })
 
   return z.object({
-    name: z.string(),
+    name: z.string().min(1, { message: 'Repository Name is required' }),
     config: z.object(configShape)
   })
 }
@@ -117,21 +102,20 @@ export function generatePlatformConfigSchema(platform: Platform) {
 export function generateProjectConfigurationSchema(
   projectData: ProjectOptions
 ) {
-  const resourceSchemas = projectData.resources.map(resource =>
-    generateResourceConfigSchema(resource)
-  )
+  // Build schema for template parameters
+  const parameterShape: Record<string, z.ZodTypeAny> = {}
 
-  if (resourceSchemas.length === 0) {
-    return z.object({
-      resources: z.tuple([]),
-      platform: generatePlatformConfigSchema(projectData.platform)
+  if (projectData.template) {
+    const flattenedParams = flattenTemplateParameters(
+      projectData.template.parameters
+    )
+    Object.entries(flattenedParams).forEach(([key, field]) => {
+      parameterShape[key] = generateFieldSchema(field)
     })
   }
 
   return z.object({
-    resources: z.tuple(
-      resourceSchemas as unknown as [z.ZodTypeAny, ...z.ZodTypeAny[]]
-    ),
+    parameters: z.object(parameterShape),
     platform: generatePlatformConfigSchema(projectData.platform)
   })
 }

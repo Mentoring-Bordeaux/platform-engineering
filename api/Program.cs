@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Scalar.AspNetCore;
+using YamlDotNet.Serialization;
 
 public class Program
 {
@@ -8,10 +9,11 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        string nuxtAppUrl =
-            builder.Configuration["services:app:http:0"]
-            ?? builder.Configuration["NuxtAppUrl"]
-            ?? "http://localhost:3000";
+       string nuxtAppUrl =
+        builder.Configuration["NuxtAppUrl"]
+        ?? builder.Configuration["services:app:http:0"]
+        ?? "http://localhost:3000";
+
 
         // Configure CORS
         builder.Services.AddCors(options =>
@@ -34,12 +36,12 @@ public class Program
             );
         });
 
-        // Register the generic Pulumi service
+        // Register the Pulumi service
         builder.Services.AddScoped<PulumiService>();
 
         builder.Services.AddOpenApi();
 
-        var app = builder.Build();
+        var app = builder.Build();        
 
         app.Logger.LogInformation(
             "Configuring CORS to allow requests from: {NuxtAppUrl}",
@@ -57,79 +59,206 @@ public class Program
         app.UseHttpsRedirection();
 
         var createProjectHandler = async (
-            TemplateRequest[] request,
+            CreateProjectRequest request,
             PulumiService pulumiService,
             ILogger<Program> logger
         ) =>
         {
+            // Validate input
+            var inputError = ValidateCreateProjectRequest(request);
+            if (inputError != null)
+            {
+                return Results.BadRequest(inputError);
+            }
+
             try
             {
-                List<ResultPulumiAction> results = new List<ResultPulumiAction>();
-                foreach (TemplateRequest req in request)
+                // Prepare injected credentials
+                var injectedCredentials = new Dictionary<string, string>();
+
+                // GitHub credentials
+                string githubToken = app.Configuration["GitHubToken"] ?? "";
+                string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
+                if (HasRealConfigValue(githubToken))
                 {
-                    ResultPulumiAction? actionResult = CreateResultForInputError(req);
-
-                    if (actionResult != null)
-                    {
-                        results.Add(actionResult);
-                        return Results.BadRequest(results);
-                    }
-
-                    // Inject GitHub credentials from configuration if available for all pulumi actions (generalization purpose)
-                    string githubToken = app.Configuration["GitHubToken"] ?? "";
-                    string githubOrganizationName = app.Configuration["GitHubOrganizationName"] ?? "";
-                    string gitlabToken = app.Configuration["GitLabToken"] ?? "";
-                    string gitlabBaseUrl = app.Configuration["GitLabBaseUrl"] ?? "";
-                    req.Parameters ??= new Dictionary<string, string>();
-
-                    if (HasRealConfigValue(githubToken))
-                    {
-                        req.Parameters["githubToken"] = githubToken;
-                    }
-                    if (HasRealConfigValue(githubOrganizationName))
-                    {
-                        req.Parameters["githubOrganizationName"] = githubOrganizationName;
-                    }
-                    if (HasRealConfigValue(gitlabToken))
-                    {
-                        req.Parameters["gitlabToken"] = gitlabToken;
-                    }
-                    if (HasValidHttpUrl(gitlabBaseUrl))
-                    {
-                        req.Parameters["gitlabBaseUrl"] = gitlabBaseUrl;
-                    }
-
-                    IResult result = await pulumiService.ExecuteAsync(req);
-
-                    actionResult = ProcessResult(result, req.Name, req.ResourceType, logger);
-
-                    if (actionResult.StatusCode >= 400)
-                    {
-                        return Results.Json(actionResult, statusCode: actionResult.StatusCode);
-                    }
-                    results.Add(actionResult);
+                    injectedCredentials["githubToken"] = githubToken;
                 }
-                
+                if (HasRealConfigValue(githubOrganizationName))
+                {
+                    injectedCredentials["githubOrganizationName"] = githubOrganizationName;
+                }
+
+                // GitLab credentials
+                string gitlabToken = app.Configuration["GitLabToken"] ?? "";
+                string gitlabBaseUrl = app.Configuration["GitLabBaseUrl"] ?? "";
+                if (HasRealConfigValue(gitlabToken))
+                {
+                    injectedCredentials["gitlabToken"] = gitlabToken;
+                }
+                if (HasValidHttpUrl(gitlabBaseUrl))
+                {
+                    injectedCredentials["gitlabBaseUrl"] = gitlabBaseUrl;
+                }
+
+                var results = new List<ResultPulumiAction>();
+
+                // Step 1: Execute template
+                logger.LogInformation(
+                    "Executing template '{TemplateName}' for project '{ProjectName}'",
+                    request.TemplateName,
+                    request.ProjectName
+                );
+                var templateResult = await pulumiService.ExecuteTemplateAsync(request);
+                results.Add(templateResult);
+
+                if (templateResult.StatusCode >= 400)
+                {
+                    logger.LogError("Template execution failed: {Message}", templateResult.Message);
+                    return Results.Json(results, statusCode: templateResult.StatusCode);
+                }
+
+                // Step 2: Execute platform (if provided)
+                if (request.Platform != null && !string.IsNullOrWhiteSpace(request.Platform.Type))
+                {
+                    logger.LogInformation(
+                        "Executing platform '{PlatformType}' for project '{ProjectName}'",
+                        request.Platform.Type,
+                        request.ProjectName
+                    );
+                    var platformResult = await pulumiService.ExecutePlatformAsync(
+                        request,
+                        injectedCredentials
+                    );
+                    results.Add(platformResult);
+
+                    if (platformResult.StatusCode >= 400)
+                    {
+                        logger.LogError(
+                            "Platform execution failed: {Message}",
+                            platformResult.Message
+                        );
+                        return Results.Json(results, statusCode: platformResult.StatusCode);
+                    }
+                }
+
+                logger.LogInformation(
+                    "Project created successfully: {ProjectName}",
+                    request.ProjectName
+                );
                 return Results.Ok(results);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Unhandled exception in createProjectHandler: {Message}", ex.Message);
-                return Results.Json(new ResultPulumiAction
-                {
-                    Name = "",
-                    ResourceType = "",
-                    StatusCode = 500,
-                    Message = $"Internal server error: {ex.Message}",
-                }, statusCode: 500);
+                logger.LogError(
+                    ex,
+                    "Unhandled exception in createProjectHandler: {Message}",
+                    ex.Message
+                );
+                return Results.Json(
+                    new ResultPulumiAction
+                    {
+                        Name = request.ProjectName,
+                        ResourceType = "unknown",
+                        StatusCode = 500,
+                        Message = $"Internal server error: {ex.Message}",
+                    },
+                    statusCode: 500
+                );
             }
+        };
+
+        var getTemplates = (ILogger<Program> logger) =>
+        {
+            var templatesDir = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "pulumiPrograms/templates"
+            );
+
+            if (!Directory.Exists(templatesDir))
+            {
+                logger.LogWarning("Templates directory not found at: {TemplatesDir}", templatesDir);
+                return Results.Ok(new List<object>());
+            }
+
+            var templates = new List<object>();
+            var templateDirs = Directory.GetDirectories(templatesDir);
+
+            foreach (var templateDir in templateDirs)
+            {
+                var templateYamlPath = Path.Combine(templateDir, "template.yaml");
+
+                if (!File.Exists(templateYamlPath))
+                {
+                    logger.LogWarning("template.yaml not found in: {TemplateDir}", templateDir);
+                    continue;
+                }
+
+                try
+                {
+                    var yamlContent = File.ReadAllText(templateYamlPath);
+                    var deserializer = new DeserializerBuilder().Build();
+                    var yamlObject = deserializer.Deserialize<object>(yamlContent);
+
+                    templates.Add(yamlObject);
+                    logger.LogInformation(
+                        "Successfully loaded template: {TemplateName}",
+                        Path.GetFileName(templateDir)
+                    );
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error loading template from {TemplateDir}", templateDir);
+                }
+            }
+            return Results.Ok(templates);
         };
 
         // Azure Static Web Apps proxies backend requests via the fixed /api prefix.
         app.MapPost("/create-project", createProjectHandler);
         app.MapPost("/api/create-project", createProjectHandler);
 
+        app.MapGet("/templates", getTemplates);
+        app.MapGet("/api/templates", getTemplates);
+
         app.Run();
+    }
+
+    private static ResultPulumiAction? ValidateCreateProjectRequest(CreateProjectRequest request)
+    {
+        if (request == null)
+        {
+            return new ResultPulumiAction
+            {
+                Name = "",
+                ResourceType = "",
+                StatusCode = 400,
+                Message = "Request body is null",
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(request.TemplateName))
+        {
+            return new ResultPulumiAction
+            {
+                Name = request.ProjectName ?? "NotSpecified",
+                ResourceType = "unknown",
+                StatusCode = 400,
+                Message = "Missing 'TemplateName' in request",
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ProjectName))
+        {
+            return new ResultPulumiAction
+            {
+                Name = "NotSpecified",
+                ResourceType = request.TemplateName,
+                StatusCode = 400,
+                Message = "Missing 'ProjectName' in request",
+            };
+        }
+
+        return null;
     }
 
     private static bool HasRealConfigValue(string? value)
@@ -139,11 +268,13 @@ public class Program
             return false;
         }
 
-        // Prevent common placeholder strings from being treated as real configuration.
-        // This avoids injecting invalid URLs (like "optional (self-hosted GitLab): ...") into Pulumi providers.
         var trimmed = value.Trim();
         var lower = trimmed.ToLowerInvariant();
-        if (lower.Contains("should be set") || lower.StartsWith("optional") || lower.Contains("replace_with"))
+        if (
+            lower.Contains("should be set")
+            || lower.StartsWith("optional")
+            || lower.Contains("replace_with")
+        )
         {
             return false;
         }
@@ -164,141 +295,5 @@ public class Program
         }
 
         return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
-    }
-
-    private static ResultPulumiAction? CreateResultForInputError(TemplateRequest request)
-    {
-        if (request == null)
-        {
-            return new ResultPulumiAction
-            {
-                Name = "",
-                ResourceType = "",
-                StatusCode = 400,
-                Message = "Request body is null",
-            };
-        }
-        Console.WriteLine($"Request received: Name={request.Name}, Type={request.ResourceType}");
-
-        if (request.Name == null || string.IsNullOrWhiteSpace(request.Name))
-        {
-            return new ResultPulumiAction
-            {
-                Name = "NotSpecified",
-                ResourceType = request.ResourceType ?? "NotSpecified",
-                StatusCode = 400,
-                Message = "Missing 'name' in request",
-            };
-        }
-        if (request.ResourceType == null || string.IsNullOrWhiteSpace(request.ResourceType))
-        {
-            return new ResultPulumiAction
-            {
-                Name = request.Name,
-                ResourceType = "NotSpecified",
-                StatusCode = 400,
-                Message = "Missing 'resourceType' parameter",
-            };
-        }
-
-        // Add verification that the type exists in the pulumiPrograms folder
-        return null;
-    }
-
-    private static ResultPulumiAction ProcessResult(
-        IResult result,
-        string name,
-        string resourceType,
-        ILogger log
-    )
-    {
-        if (result is JsonHttpResult<Dictionary<string, object>> jsonResult)
-        {
-            log.LogInformation(
-                "Resource created successfully: {Name} of {ResourceType}",
-                name,
-                resourceType
-            );
-            return new ResultPulumiAction
-            {
-                Name = name,
-                ResourceType = resourceType,
-                StatusCode = 200,
-                Message = "Resource created successfully",
-                Outputs = jsonResult.Value,
-            };
-        }
-        else if (result is ProblemHttpResult problemResult)
-        {
-            string? errorData = problemResult.ProblemDetails.Detail;
-
-            if (string.IsNullOrEmpty(errorData))
-            {
-                return new ResultPulumiAction
-                {
-                    Name = name,
-                    ResourceType = resourceType,
-                    StatusCode = 500,
-                    Message = "Unknown error occurred, no details provided",
-                };
-            }
-
-            const string PostErrorRegex = @"POST.*: (\d+) (.*?)\. \[(.*)\]";
-            var match = Regex.Match(errorData, PostErrorRegex);
-            if (match.Success)
-            {
-                var statusCodeStr = match.Groups[1].Value;
-                var errorMessage = match.Groups[2].Value;
-                var errorDetail = match.Groups[3].Value;
-
-                // Try to parse the string status code into an integer
-                if (int.TryParse(statusCodeStr, out var statusCodeInt))
-                {
-                    return new ResultPulumiAction
-                    {
-                        Name = name,
-                        ResourceType = resourceType,
-                        StatusCode = statusCodeInt,
-                        Message = $"{errorMessage}. Details: {errorDetail}",
-                    };
-                }
-            }
-
-            const string MissingVariableRegex =
-                @"Missing required configuration variable '.*?([a-zA-Z0-9]+)'";
-            match = Regex.Match(errorData, MissingVariableRegex);
-            if (match.Success)
-            {
-                var missingVar = match.Groups[1].Value;
-                return new ResultPulumiAction
-                {
-                    Name = name,
-                    ResourceType = resourceType,
-                    StatusCode = 400,
-                    Message = $"Missing required parameter '{missingVar}'",
-                };
-            }
-            return new ResultPulumiAction
-            {
-                Name = name,
-                ResourceType = resourceType,
-                StatusCode = problemResult.ProblemDetails.Status ?? 500,
-                Message =
-                    problemResult.ProblemDetails.Detail
-                    ?? "Unknown error occurred, no details provided",
-            };
-        }
-        else
-        {
-            log.LogError("Unknown result type encountered in treatResult method.");
-            log.LogError("Result type: {ResultType}", result.GetType().FullName);
-            return new ResultPulumiAction
-            {
-                Name = name,
-                ResourceType = resourceType,
-                StatusCode = 500,
-                Message = "Unknown result type",
-            };
-        }
     }
 }

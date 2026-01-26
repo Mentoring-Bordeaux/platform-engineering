@@ -16,40 +16,25 @@
     </template>
   </UModal>
   <UForm
-    :state="state as any"
+    :state="state"
     :schema="validationSchema"
     class="w-full max-w-4xl"
     @error="handleFormValidationErrors"
     @submit="onSubmit"
   >
-    <!-- Resource Configurations -->
-    <FormSection
-      v-for="(resource, index) in resources"
-      :key="`resource-${resource.type}-${index}`"
-      :title="`${resource.type} Configuration`"
-    >
+    <!-- Template Parameters Section -->
+    <FormSection title="Template Configuration">
       <UFormField
-        :name="`resources.${index}.name`"
-        label="Resource Name"
-        required
-      >
-        <UInput
-          v-model="state.resources[index]!.name"
-          placeholder="Enter resource name"
-          class="w-full"
-        />
-      </UFormField>
-      <UFormField
-        v-for="(configOption, configKey) in resource.config"
-        :key="`resources.${index}.config.${configKey}`"
-        :name="`resources.${index}.config.${configKey}`"
-        :label="configOption.label"
-        :required="configOption.required || false"
+        v-for="(paramOption, paramKey) in templateParameters"
+        :key="`template-param-${paramKey}`"
+        :name="`parameters.${paramKey}`"
+        :label="paramOption.label"
+        :required="paramOption.required || false"
       >
         <GenericFormInput
-          v-model="state.resources[index]!.config[configKey]"
-          :config-option="configOption"
-          :placeholder="configOption.description"
+          v-model="state.parameters[paramKey]"
+          :config-option="paramOption"
+          :placeholder="paramOption.description"
           class="w-full"
         />
       </UFormField>
@@ -113,10 +98,11 @@
 </template>
 
 <script setup lang="ts">
-import type { ProjectOptions } from '~/config/project-options'
-import type { ConfiguredPlatform, ConfiguredResource } from '~/types'
-
+import { flattenTemplateParameters } from '~/types'
+import { generateDefaultConfig } from '~/utils/config'
+import { generateProjectConfigurationSchema } from '~/utils/validation'
 import InfoModal from './InfoModal.vue'
+import type { ProjectOptions } from '~/config/project-options'
 
 const config = useRuntimeConfig()
 
@@ -128,8 +114,12 @@ const emit = defineEmits<{
   back: []
 }>()
 
-const resources = computed(() => props.projectData.resources)
 const platform = computed(() => props.projectData.platform)
+
+// Flatten template parameters for display
+const templateParameters = computed(() =>
+  flattenTemplateParameters(props.projectData.template.parameters)
+)
 
 // Generate validation schema from project data
 const validationSchema = computed(() =>
@@ -137,16 +127,16 @@ const validationSchema = computed(() =>
 )
 
 interface ConfigurationFormState {
-  resources: ConfiguredResource[]
-  platform: ConfiguredPlatform
+  parameters: Record<string, unknown>
+  platform: {
+    name: string
+    type: string
+    config: Record<string, unknown>
+  }
 }
 
-const state = ref<ConfigurationFormState>({
-  resources: resources.value.map(resource => ({
-    name: '',
-    type: resource.type,
-    config: generateDefaultConfig(resource.config)
-  })),
+const state = reactive<ConfigurationFormState>({
+  parameters: generateDefaultConfig(templateParameters.value),
   platform: {
     name: '',
     type: platform.value.type,
@@ -155,7 +145,6 @@ const state = ref<ConfigurationFormState>({
 })
 
 const isLoading = ref(false)
-
 const overlay = useOverlay()
 
 interface ModalOptions {
@@ -173,131 +162,88 @@ async function openModal({ title, body }: ModalOptions) {
   modal.open()
 }
 
-// Handlers
-
 function handleFormValidationErrors(error: unknown) {
   console.error('Form validation errors:', error)
 }
 
-function formatResourceType(str: string): string {
-  const resourceType = str.replace(/\s+/g, '-')
-  return resourceType.toLowerCase().trim()
-}
-
-// Submit action
 async function onSubmit() {
   console.log('Configuration submitted:', {
     projectData: props.projectData,
-    configuration: state.value
+    configuration: state
   })
 
   isLoading.value = true
 
-  interface RequestReponse {
-    name: string
-    ressourceType: string
-    statusCode: number
-    message: string
-    outputs?: Record<string, unknown>
-  }
-
-  interface RequestElementTemplate {
-    name: string
-    resourceType: string
-    framework?: string
-    parameters: Record<string, string>
-  }
-
-  const listRessources: RequestElementTemplate[] = state.value.resources.map(
-    (resource): RequestElementTemplate => {
-      return {
-        name: resource.name,
-        resourceType: 'resources//' + formatResourceType(resource.type),
-        parameters: Object.fromEntries(
-          Object.entries(resource.config).map(([key, value]) => [
-            key,
-            String(value)
-          ])
-        )
+  try {
+    // Build the new request format
+    const createProjectRequest = {
+      templateName: props.projectData.template.name,
+      projectName: props.projectData.name,
+      parameters: state.parameters,
+      platform: {
+        type: state.platform.type,
+        name: state.platform.name,
+        config: state.platform.config
       }
     }
-  )
 
-  listRessources.push({
-    name: state.value.platform.name,
-    resourceType: 'platforms//' + formatResourceType(state.value.platform.type),
-    parameters: Object.fromEntries(
-      Object.entries(state.value.platform.config).map(([key, value]) => [
-        key,
-        String(value)
-      ])
+    console.log('Sending create project request:', createProjectRequest)
+
+    interface CreateProjectResponse {
+      statusCode: number
+      message: string
+      outputs?: Record<string, unknown>
+    }
+
+    const { data, error } = await useFetch<CreateProjectResponse>(
+      '/create-project',
+      {
+        server: false,
+        baseURL: config.public.apiBase,
+        method: 'POST',
+        body: createProjectRequest,
+        watch: false
+      }
     )
-  })
 
-  console.log('Sending resources to API:', listRessources)
+    isLoading.value = false
 
-  const { data, error } = await useFetch<RequestReponse[]>('/create-project', {
-    server: false,
-    baseURL: config.public.apiBase,
-    method: 'POST',
-    body: listRessources,
-    watch: false
-  })
-  isLoading.value = false
+    if (error.value) {
+      console.error('Error creating project:', error.value.data)
 
-  if (error.value) {
-    console.error('Error creating repository:', error.value.data)
+      const title =
+        error.value.statusCode === 400
+          ? 'Invalid Configuration'
+          : 'Error Creating Project'
 
-    const title =
-      error.value.statusCode === 400
-        ? 'Invalid Configuration'
-        : 'Error Creating Resources'
+      const errorMessage =
+        typeof error.value.data === 'object'
+          ? error.value.data?.message || JSON.stringify(error.value.data)
+          : error.value.data || 'An unexpected error occurred'
 
-    if (!error.value.data) {
       openModal({
-        title: title,
-        body: 'There was an unexpected error while creating your project resources. Please try again.'
+        title,
+        body: errorMessage
       })
       return
     }
 
-    if (!Array.isArray(error.value.data)) {
+    if (data.value) {
+      const successMessage =
+        data.value.message || 'Project created successfully'
+      console.log('Project created successfully:', data.value)
       openModal({
-        title: title,
-        body:
-          error.value.data.message ||
-          'There was an unexpected error while creating your project resources. Please try again.'
+        title: 'Your Project is Ready!',
+        body: successMessage
       })
-      return
     }
-    const message = error.value.data
-      .map(
-        (err: RequestReponse) =>
-          `- ${err.message} to ${err.name} of type ${err.ressourceType}`
-      )
-      .join('\n')
+  } catch (ex) {
+    isLoading.value = false
+    console.error('Exception creating project:', ex)
     openModal({
-      title: title,
-      body:
-        message ||
-        'There was an unexpected error while creating your project resources. Please try again.'
+      title: 'Error',
+      body: 'An unexpected error occurred while creating your project.'
     })
-    return
-  }
-  if (data.value) {
-    const message = data.value
-      .map(
-        (data: RequestReponse) =>
-          `- ${data.name} of type ${data.ressourceType} created successfully. \n
-            ${data.outputs ? JSON.stringify(data.outputs) : ''}`
-      )
-      .join('\n')
-    console.log('Repository created successfully:', data.value)
-    openModal({
-      title: 'Your Project is Ready!',
-      body: `Ressources created successfully. ${message}`
-    })
-    return
   }
 }
 
