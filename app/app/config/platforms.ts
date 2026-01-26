@@ -8,7 +8,13 @@ export const PLATFORMS = {
     type: 'github',
     icon: 'devicon:github',
     config: {
-      Description: {
+      name: {
+        type: 'text',
+        label: 'Repository Name',
+        description: 'The name of the GitHub repository to create.',
+        required: true
+      },
+      description: {
         type: 'textarea',
         label: 'Repository Description',
         description: 'A brief description of the GitHub repository.',
@@ -26,6 +32,12 @@ export const PLATFORMS = {
     type: 'gitlab',
     icon: 'devicon:gitlab',
     config: {
+      name: {
+        type: 'text',
+        label: 'Repository Name',
+        description: 'The name of the Gitlab repository to create.',
+        required: true
+      },
       description: {
         type: 'textarea',
         label: 'Description',

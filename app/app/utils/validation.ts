@@ -91,7 +91,6 @@ export function generatePlatformConfigSchema(platform: Platform) {
   })
 
   return z.object({
-    name: z.string().min(1, { message: 'Repository Name is required' }),
     config: z.object(configShape)
   })
 }
