@@ -14,13 +14,18 @@
         label="Close"
         color="neutral"
         class="cursor-pointer"
-        @click="close"
+        @click="handleClose(close)"
       />
     </template>
   </UModal>
 </template>
 
 <script setup lang="ts">
+const handleClose = (close: () => void) => {
+  close()
+  navigateTo('/')
+}
+
 defineProps<{
   title?: string
   body?: string
