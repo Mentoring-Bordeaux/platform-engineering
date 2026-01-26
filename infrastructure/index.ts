@@ -32,7 +32,7 @@ const env = new containerapp.ManagedEnvironment(`env-${projectPrefix}-`, {
 const acr = new containerregistry.Registry(`cr${projectPrefix}`, {
   resourceGroupName: rg.name,
   sku: { name: "Basic" },
-  adminUserEnabled: false,
+  adminUserEnabled: true,
 });
 
 const identity = new managedidentity.UserAssignedIdentity(
@@ -77,6 +77,24 @@ const vault = new keyvault.Vault(`kv-${projectPrefix}`, {
   },
 });
 
+const keyVaultSecretsOfficerRoleDefinitionId =
+  "/providers/Microsoft.Authorization/roleDefinitions/b86a8fe4-44ce-4948-aee5-eccb2c155cd7";
+
+const raKvSecretsOfficerCurrentUserName = new random.RandomUuid(
+  `ra-kv-secrets-officer-current-user-guid-${projectPrefix}`,
+).result;
+
+const raKvSecretsOfficerCurrentUser = new authorization.RoleAssignment(
+  `ra-kv-secrets-officer-current-user-${projectPrefix}`,
+  {
+    roleAssignmentName: raKvSecretsOfficerCurrentUserName,
+    principalId: client.objectId, // user en local, SP/Federated dans GH Actions
+    roleDefinitionId: keyVaultSecretsOfficerRoleDefinitionId,
+    scope: vault.id,
+  },
+  { dependsOn: [vault] },
+);
+
 
 const kvSecrets: Record<string, pulumi.Input<string>> = {
   "pulumi-access-token": pulumiAccessToken,
@@ -97,14 +115,13 @@ for (const [secretName, secretValue] of Object.entries(kvSecrets)) {
       properties: { value: secretValue },
     },
     {
-      // Optional: aliases if you renamed the Pulumi resource name previously
+      dependsOn: [vault, raKvSecretsOfficerCurrentUser],
       ...(secretName === "pulumi-access-token"
         ? { aliases: [{ name: `kvsec-${projectPrefix}-pulumi-access-token` }] }
         : {}),
     },
   );
 }
-
 
 const kvSecretUris: Record<string, pulumi.Output<string>> = {};
 for (const secretName of Object.keys(kvSecrets)) {
@@ -119,6 +136,9 @@ for (const secretName of Object.keys(kvSecrets)) {
 // Donner le droit à l'identité (UAI) de lire les secrets du vault (RBAC)
 const keyVaultSecretsUserRoleDefinitionId =
   "/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6";
+
+
+
 
 const kvRoleAssignmentName = new random.RandomUuid(
   `ra-kv-guid-${projectPrefix}`,
