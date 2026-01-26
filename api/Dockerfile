@@ -82,6 +82,10 @@ USER root
 # Copy SDK into runtime image
 COPY --from=sdk /usr/share/dotnet /usr/share/dotnet
 
+RUN test -d /usr/share/dotnet/sdk \
+    && ls -la /usr/share/dotnet/sdk \
+    && /usr/share/dotnet/dotnet --list-sdks
+
 # Ensure dotnet host can discover SDKs
 RUN mkdir -p /etc/dotnet \
     && echo "/usr/share/dotnet" > /etc/dotnet/install_location \
