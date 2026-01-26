@@ -124,7 +124,6 @@ const validationSchema = computed(() =>
 interface ConfigurationFormState {
   parameters: Record<string, unknown>
   platform: {
-    name: string
     type: string
     config: Record<string, unknown>
   }
@@ -133,7 +132,6 @@ interface ConfigurationFormState {
 const state = reactive<ConfigurationFormState>({
   parameters: generateDefaultConfig(templateParameters.value),
   platform: {
-    name: '',
     type: platform.value.type,
     config: generateDefaultConfig(platform.value.config)
   }
@@ -177,7 +175,6 @@ async function onSubmit() {
       parameters: state.parameters,
       platform: {
         type: state.platform.type,
-        name: state.platform.name,
         config: state.platform.config
       }
     }
