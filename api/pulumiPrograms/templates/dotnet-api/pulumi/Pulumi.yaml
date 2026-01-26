@@ -1,0 +1,34 @@
+name: dotnetapi
+description: Test a basic template for creating a dotnet api on Azure
+
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: azure-typescript
+
+  Name:
+    description: "Project name used for all Azure resources"
+    default: "my-dotnet-api"
+
+  location:
+    description: "Azure region"
+    default: "westeurope"
+
+  dotnetVersion:
+    description: ".NET version for the Web App"
+    default: "8.0"
+
+  sku:
+    description: "App Service Plan SKU"
+    default: "B1"
+
+  adminLogin:
+    description: "SQL Server admin login"
+    default: "sqladminuser"
+  
+  

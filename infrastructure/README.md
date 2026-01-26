@@ -13,6 +13,7 @@ pulumi config set --secret PULUMI_ACCESS_TOKEN <your-pulumi-access-token>
 pulumi config set --secret GithubToken <your-github-token>
 pulumi config set --secret GitLabToken <your-gitlab-token>
 pulumi config set --secret GitHubOrganizationName <your-github-org>
+pulumi config set --secret GitLabBaseUrl <your-gitlab-url>
 ```
 
 ## Deploy

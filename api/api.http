@@ -1,4 +1,4 @@
-@api_HostAddress = http://localhost:5064
+@api_HostAddress = https://localhost:5064
 
 ### Create a template only (e.g., ecommerce)
 POST {{api_HostAddress}}/create-project
@@ -58,4 +58,63 @@ Content-Type: application/json
 ### Get available templates
 GET {{api_HostAddress}}/templates
 
-###
+### Create a static website on Azure Storage (Pulumi: pulumiPrograms/resources/static-web-site)
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+[
+    {
+        "Name": "mystaticsite",
+        "resourceType": "resources/static-web-site",
+        "parameters": {
+            "targetRepo": "my-existing-repo"
+        }
+    }
+]
+
+### Create a .NET API project infra (Pulumi: pulumiPrograms/project/dotnet-api)
+# `adminPassword` est requis par le programme Pulumi.
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+[
+    {
+        "Name": "my-dotnet-api",
+        "resourceType": "project/dotnet-api",
+        "parameters": {
+            "adminPassword": "CHANGE_ME_STRONG_PASSWORD",
+            "location": "westeurope",
+            "dotnetVersion": "8.0",
+            "sku": "B1",
+            "adminLogin": "sqladminuser",
+            "targetRepo": "my-existing-repo"
+        }
+    }
+]
+
+### Create repo + provision resource and push Pulumi code to the repo
+# Note: l'API push le code Pulumi vers GitHub pour les resourceType != platforms/github.
+# Utilisez `targetRepo` pour pousser dans un repo existant (sinon: request.name).
+POST {{api_HostAddress}}/create-project
+Content-Type: application/json
+Accept: application/json
+
+[
+    {
+        "name": "demo-platform-repo",
+        "resourceType": "platforms/github",
+        "parameters": {
+            "isPrivate": "true",
+            "description": "Repo for Pulumi code"
+        }
+    },
+    {
+        "name": "demo-static-site",
+        "resourceType": "resources/static-web-site",
+        "parameters": {
+            "targetRepo": "demo-platform-repo"
+        }
+    }
+]

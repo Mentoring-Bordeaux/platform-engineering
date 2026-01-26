@@ -23,7 +23,7 @@ public class PulumiService
     }
 
     // Executes a template Pulumi program (e.g., ecommerce).
-    public async Task<ResultPulumiAction> ExecuteTemplateAsync(CreateProjectRequest request)
+    public async Task<ResultPulumiAction> ExecuteTemplateAsync(CreateProjectRequest request, IGitRepositoryService gitService)
     {
         string templateName = request.TemplateName;
         var templateDir = Path.Combine(
@@ -72,18 +72,15 @@ public class PulumiService
             };
         }
 
-        return await ExecuteInternalAsync(
-            pulumiProgramDir,
-            request.ProjectName,
-            "template",
-            request.Parameters
-        );
+        var result = await ExecuteInternalAsync(pulumiProgramDir, request.ProjectName, "template", request.Parameters, gitService, templateName);
+        return result;
     }
 
     // Executes a platform Pulumi program (e.g., GitHub, GitLab) to create a repository.
     public async Task<ResultPulumiAction> ExecutePlatformAsync(
         CreateProjectRequest request,
-        Dictionary<string, string> injectedCredentials
+        Dictionary<string, string> injectedCredentials,
+        IGitRepositoryService gitService
     )
     {
         if (request.Platform == null)
@@ -131,21 +128,65 @@ public class PulumiService
         }
 
         // Merge platform config with injected credentials
-        var mergedParams = new Dictionary<string, object>(
-            request.Platform.Config.Where(kv => kv.Key != "type")
-        );
+        var mergedParams = request.Platform.Config
+            .Where(kv => kv.Key != "type")
+            .ToDictionary(kv => kv.Key, kv => (object)kv.Value);
 
         foreach (var kvp in injectedCredentials)
         {
             mergedParams[kvp.Key] = kvp.Value;
         }
 
-        return await ExecuteInternalAsync(
-            platformDir,
-            request.ProjectName,
-            platformType,
-            mergedParams
-        );
+        var result = await ExecuteInternalAsync(platformDir, request.ProjectName, platformType, mergedParams);
+
+        return result;
+    }
+
+    public async Task InitializeRepo(string projectName, List<FrameworkType> frameworks, IGitRepositoryService gitService)
+    {
+        if (frameworks == null || !frameworks.Any())
+            return;
+
+        _logger.LogInformation("Initializing repository with frameworks: {Frameworks}", string.Join(", ", frameworks));
+
+        await gitService.InitializeRepoWithFrameworksAsync(frameworks, projectName);
+
+    }
+    private async Task PushPulumiAsync(string projectName, Dictionary<string, object> parameters, IGitRepositoryService gitService, string? templateName = null)
+    {
+        string localPath = Path.Combine(Directory.GetCurrentDirectory(), "pulumiPrograms", "templates", templateName!, "pulumi");
+
+        if (!Directory.Exists(localPath))
+        {
+            _logger.LogWarning("Local Pulumi path not found: {LocalPath}", localPath);
+            return;
+        }
+
+        switch (gitService)
+        {
+            case GitHubService githubService:
+                await githubService.PushPulumiCodeAsync(
+                    githubService.OrgName,
+                    githubService.RepoName,
+                    localPath,
+                    parameters.ToDictionary(kv => kv.Key, kv => kv.Value.ToString() ?? string.Empty),
+                    projectName
+                );
+                break;
+
+            case GitLabService gitlabService:
+                await gitlabService.PushPulumiCodeAsync(
+                    gitlabService.ProjectPathOrUrl,
+                    localPath,
+                    parameters.ToDictionary(kv => kv.Key, kv => kv.Value.ToString() ?? string.Empty),
+                    projectName
+                );
+                break;
+
+            default:
+                _logger.LogWarning("Unsupported Git service for pushing Pulumi code.");
+                break;
+        }
     }
 
     // Internal method that executes a Pulumi program with proper setup and cleanup.
@@ -153,7 +194,9 @@ public class PulumiService
         string workingDir,
         string projectName,
         string resourceType,
-        Dictionary<string, object> parameters
+        Dictionary<string, object> parameters,
+        IGitRepositoryService? gitService = null,
+        string? templateName = null
     )
     {
         var pulumiHome = GetPulumiHome();
@@ -234,7 +277,7 @@ public class PulumiService
 
                 return key;
             }
-
+                                             
             // Remove stale config keys from previous runs
             var desiredKeys = parameters
                 .Keys.Where(k => k != "type")
@@ -304,6 +347,11 @@ public class PulumiService
                 projectName,
                 resourceType
             );
+            if (gitService != null)
+            {
+                _logger.LogInformation("Pushing Pulumi code to Git repository before destroying the stack...");
+                await PushPulumiAsync(projectName, parameters, gitService, templateName);
+            }
             return new ResultPulumiAction
             {
                 Name = projectName,
@@ -333,20 +381,33 @@ public class PulumiService
         }
         finally
         {
-            // Clean up the stack
+            // Clean up the stack YAML file only (do not destroy resources)
             if (stack != null)
             {
                 try
                 {
-                    await stack.DestroyAsync();
-                    await stack.Workspace.RemoveStackAsync(stackName);
+                    // Le fichier est dans le dossier du programme Pulumi
+                    string stackFileName = $"Pulumi.{stackName}.yaml";
+                    string stackFilePath = Path.Combine(workingDir, stackFileName);
+
+                    if (File.Exists(stackFilePath))
+                    {
+                        File.Delete(stackFilePath);
+                        _logger.LogInformation("Stack file '{StackFile}' deleted successfully.", stackFileName);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Stack file '{StackFile}' not found, nothing to delete.", stackFileName);
+                    }
+
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to clean up stack '{StackName}'", stackName);
+                    _logger.LogWarning(ex, "Failed to delete stack file '{StackName}'", stackName);
                 }
             }
         }
+
     }
 
     private static string? TryGetPulumiProjectName(string workingDir)

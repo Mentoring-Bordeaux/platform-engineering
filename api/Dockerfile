@@ -70,14 +70,42 @@ FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# Final Stage
+# SDK Stage (only to provide dotnet SDK files at runtime)
+FROM mcr.microsoft.com/dotnet/sdk:10.0.100-rc.2 AS sdk
+
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+USER root
+
+# Copy SDK into runtime image
+COPY --from=sdk /usr/share/dotnet /usr/share/dotnet
+
+RUN test -d /usr/share/dotnet/sdk \
+    && ls -la /usr/share/dotnet/sdk \
+    && /usr/share/dotnet/dotnet --list-sdks
+
+# Ensure dotnet host can discover SDKs
+RUN mkdir -p /etc/dotnet \
+    && echo "/usr/share/dotnet" > /etc/dotnet/install_location \
+    && ln -sf /usr/share/dotnet/dotnet /usr/bin/dotnet
+
+# Make discovery explicit (important in container environments)
+ENV DOTNET_ROOT=/usr/share/dotnet \
+    PATH="/usr/share/dotnet:${PATH}" \
+    DOTNET_CLI_HOME=/app/.dotnet \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+    DOTNET_NOLOGO=1 \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+RUN mkdir -p /app/.dotnet \
+    && chown -R ${APP_UID}:0 /app/.dotnet
+
+USER ${APP_UID}
+
 # Copy all pulumiPrograms content (including any node_modules) recursively
 COPY --from=deps /pulumiPrograms /app/pulumiPrograms
-
 # COPY runs as root and produces root-owned files; fix ownership so the runtime
 # non-root user can write temp files (pnpm creates _tmp_* files in the project dir).
 USER root
