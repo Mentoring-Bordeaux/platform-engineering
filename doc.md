@@ -2,11 +2,11 @@
 
 ## Introduction
 
-Ce projet est une plateforme interne de développement (Internal Developer Platform, IDP) conçue pour automatiser la création, la configuration et le déploiement d’applications cloud modernes. Il combine un portail frontend (Nuxt 4), une API backend (Minimal API .NET 10) et une infrastructure as code (Pulumi TypeScript pour Azure). L’objectif est de simplifier l’expérience des développeurs : provisionner des ressources cloud, générer des dépôts GitHub/GitLab, et déployer des applications en quelques clics, tout en respectant les bonnes pratiques DevOps et cloud native.
+This project is an Internal Developer Platform (IDP) designed to automate the creation, configuration, and deployment of modern cloud applications. It combines a frontend portal (Nuxt 4), a backend API (Minimal API .NET 10), and infrastructure as code (Pulumi TypeScript for Azure). The goal is to simplify the developer experience: provision cloud resources, generate GitHub/GitLab repositories, and deploy applications in a few clicks, while following DevOps and cloud native best practices.
 
-La plateforme orchestre l’ensemble du cycle de vie d’un projet : du choix du template, à la création du dépôt distant, jusqu’au déploiement sur Azure. Elle s’appuie sur des outils modernes (Aspire, Pulumi, CI/CD GitHub Actions) pour garantir rapidité, sécurité et reproductibilité.
+The platform orchestrates the entire project lifecycle: from template selection, to remote repository creation, to deployment on Azure. It leverages modern tools (Aspire, Pulumi, GitHub Actions CI/CD) to ensure speed, security, and reproducibility.
 
-Ce document détaille l’architecture, les dépendances, les workflows d’infrastructure et les commandes utiles pour contribuer ou déployer la solution.
+This document details the architecture, dependencies, infrastructure workflows, and useful commands to contribute to or deploy the solution.
 
 ## Overview
 
@@ -44,11 +44,11 @@ platform-engineering/
 
 **Main folders:**
 
-- `app/` : Frontend Nuxt 4 (Vue 3, Pinia, Nuxt UI)
-- `api/` : .NET 10 Minimal API, Pulumi Automation API
-- `infrastructure/` : Pulumi TypeScript for Azure
-- `PlatformEngineering.AppHost/` : Local orchestration (Aspire)
-- `.github/workflows/` : CI/CD pipelines (GitHub Actions)
+- `app/`: Frontend Nuxt 4 (Vue 3, Pinia, Nuxt UI)
+- `api/`: .NET 10 Minimal API, Pulumi Automation API
+- `infrastructure/`: Pulumi TypeScript for Azure
+- `PlatformEngineering.AppHost/`: Local orchestration (Aspire)
+- `.github/workflows/`: CI/CD pipelines (GitHub Actions)
 
 ## Setup
 
@@ -66,7 +66,7 @@ cd infrastructure
 pnpm install
 ```
 
-# Infrastructure As code
+# Infrastructure As Code
 
 ### Pulumi Configuration
 
@@ -82,15 +82,15 @@ pulumi config set --secret GitLabBaseUrl <your-gitlab-url>
 
 ### Deploy to Development
 
-Déploiement via pipeline CI/CD :
+Deployment via CI/CD pipeline:
 
-Lancer manuellement le pipeline `infrastructure.yaml` (dans Azure DevOps, GitHub Actions, etc.) pour provisionner l'infrastructure.
+Manually trigger the `infrastructure.yaml` pipeline (in Azure DevOps, GitHub Actions, etc.) to provision the infrastructure.
 
-Ce pipeline va :
+This pipeline will:
 
-1. Prévisualiser les changements d'infrastructure
-2. Demander confirmation (si configuré)
-3. Appliquer les changements à votre abonnement Azure
+1. Preview infrastructure changes
+2. Ask for confirmation (if configured)
+3. Apply the changes to your Azure subscription
 
 ### Destroy Infrastructure
 
@@ -102,7 +102,7 @@ pulumi destroy
 
 ## Infrastructure Stack
 
-The Pulumi program provisioning the following Azure resources:
+The Pulumi program provisions the following Azure resources:
 
 ### Static Web App (Frontend)
 
@@ -128,111 +128,111 @@ The Pulumi program provisioning the following Azure resources:
 
 The Pulumi program exports the following outputs after deployment:
 
-- **staticWebUrl** : Hostname of the Static Web App (frontend URL)
-- **staticWebAppName** : Name of the Static Web App resource
-- **backendUrl** : Public URL of the Container App (API endpoint)
-- **resourceGroupName** : Name of the Azure Resource Group
-- **containerRegistryName** : Name of the Azure Container Registry (ACR)
-- **containerAppName** : Name of the Azure Container App (API)
-- **acrServer** : Login server URL for the ACR
-- **keyVault** : Name of the Azure Key Vault
+- **staticWebUrl**: Hostname of the Static Web App (frontend URL)
+- **staticWebAppName**: Name of the Static Web App resource
+- **backendUrl**: Public URL of the Container App (API endpoint)
+- **resourceGroupName**: Name of the Azure Resource Group
+- **containerRegistryName**: Name of the Azure Container Registry (ACR)
+- **containerAppName**: Name of the Azure Container App (API)
+- **acrServer**: Login server URL for the ACR
+- **keyVault**: Name of the Azure Key Vault
 
 # CI/CD Pipelines
 
-Le projet utilise **GitHub Actions** pour automatiser la construction, les tests, le déploiement et la gestion de l’infrastructure.
+The project uses **GitHub Actions** to automate build, test, deployment, and infrastructure management.
 
-### Secrets requis dans GitHub Actions
+### Required secrets in GitHub Actions
 
-Pour que les pipelines CI/CD fonctionnent correctement, les secrets suivants doivent être définis dans les paramètres du repository GitHub (Settings > Secrets and variables > Actions):
+For CI/CD pipelines to work properly, the following secrets must be set in the GitHub repository settings (Settings > Secrets and variables > Actions):
 
-- `AZURE_CLIENT_ID` : ID de l’application Azure AD (Service Principal)
-- `AZURE_TENANT_ID` : ID du tenant Azure AD
-- `AZURE_SUBSCRIPTION_ID` : ID de l’abonnement Azure
+- `AZURE_CLIENT_ID`: Azure AD application ID (Service Principal)
+- `AZURE_TENANT_ID`: Azure AD tenant ID
+- `AZURE_SUBSCRIPTION_ID`: Azure subscription ID
 
-Ces secrets sont utilisés pour l’authentification Azure lors du déploiement de l’infrastructure, du backend (API) et du frontend.
+These secrets are used for Azure authentication during infrastructure, backend (API), and frontend deployment.
 
-### Principaux workflows
+### Main workflows
 
 - **[.github/workflows/ci-build.yaml](.github/workflows/ci-build.yaml)**
-  - Build, test et push des images Docker pour l’API
-  - Build et upload du frontend Nuxt
-  - Télécharge les outputs d’infrastructure pour configurer les builds
+  - Builds, tests, and pushes Docker images for the API
+  - Builds and uploads the Nuxt frontend
+  - Downloads infrastructure outputs to configure builds
 
 - **[.github/workflows/cd-deploy.yaml](.github/workflows/cd-deploy.yaml)**
-  - Déploie l’API sur Azure Container Apps
-  - Déploie le frontend sur Azure Static Web Apps
-  - Utilise les outputs d’infrastructure générés par Pulumi
+  - Deploys the API to Azure Container Apps
+  - Deploys the frontend to Azure Static Web Apps
+  - Uses infrastructure outputs generated by Pulumi
 
-### Déclencheurs
+### Triggers
 
-- Sur push/pull request sur `main`
-- Manuellement (`workflow_dispatch`)
-- Après succès du workflow `ci-build`
+- On push/pull request to `main`
+- Manually (`workflow_dispatch`)
+- After successful completion of the `ci-build` workflow
 
 ---
 
 # Backend (.NET 10 API)
 
-L’API est développée en .NET 10 (Minimal API) et s’exécute dans un conteneur Docker.
+The API is developed in .NET 10 (Minimal API) and runs in a Docker container.
 
-### Structure principale du backend
+### Main backend structure
 
-- **Program.cs** :
-  - Point d’entrée de l’API. Définit tous les endpoints REST (minimal API), configure CORS, la documentation OpenAPI, et orchestre le cycle de création de projet.
-  - Gère la logique de routage : `/api/create-project` pour provisionner un projet, `/api/templates` pour lister les templates disponibles.
-  - Valide les requêtes et injecte les services nécessaires (dont PulumiService).
+- **Program.cs**:
+  - API entry point. Defines all REST endpoints (minimal API), configures CORS, OpenAPI documentation, and orchestrates the project creation cycle.
+  - Handles routing logic: `/api/create-project` to provision a project, `/api/templates` to list available templates.
+  - Validates requests and injects required services (including PulumiService).
 
-- **PulumiService.cs** :
-  - Service central pour l’exécution des programmes Pulumi côté backend.
-  - Gère la création des dépôts (GitHub/GitLab), l’initialisation des templates, et le provisionnement des ressources cloud via Pulumi Automation API.
-  - Assure la gestion des paramètres, l’installation des dépendances, l’exécution et le nettoyage des stacks Pulumi.
-  - Fournit des méthodes pour exécuter les programmes Pulumi selon la plateforme ou le template choisi, et pour pousser le code dans le dépôt distant.
+- **PulumiService.cs**:
+  - Central service for running Pulumi programs on the backend.
+  - Manages repository creation (GitHub/GitLab), template initialization, and cloud resource provisioning via Pulumi Automation API.
+  - Handles parameter management, dependency installation, execution, and cleanup of Pulumi stacks.
+  - Provides methods to run Pulumi programs according to the selected platform or template, and to push code to the remote repository.
 
-### Endpoints principaux
+### Main endpoints
 
-Les endpoints exposés par l’API sont :
+The API exposes the following endpoints:
 
-- **POST /api/create-project** :
-  - Crée un nouveau projet en provisionnant le dépôt distant (GitHub/GitLab) et l’infrastructure cloud associée via Pulumi.
-  - Reçoit un objet JSON avec les paramètres du projet, la plateforme cible et le template.
-  - Retourne le résultat des actions (URL du repo, endpoints, etc.).
+- **POST /api/create-project**:
+  - Creates a new project by provisioning the remote repository (GitHub/GitLab) and associated cloud infrastructure via Pulumi.
+  - Receives a JSON object with project parameters, target platform, and template.
+  - Returns the result of the actions (repo URL, endpoints, etc.).
 
-- **GET /api/templates** :
-  - Retourne la liste des templates de projet disponibles (dotnet-api, ecommerce, enseirb, etc.).
-  - Permet au frontend d’afficher les options de templates lors de la création d’un projet.
+- **GET /api/templates**:
+  - Returns the list of available project templates (dotnet-api, ecommerce, enseirb, etc.).
+  - Allows the frontend to display template options when creating a project.
 
-> Ces endpoints sont également accessibles sans le préfixe `/api/` pour compatibilité avec Azure Static Web Apps (ex : `/create-project`, `/templates`).
+> These endpoints are also accessible without the `/api/` prefix for compatibility with Azure Static Web Apps (e.g., `/create-project`, `/templates`).
 
-### Variables d’environnement nécessaires (backend)
+### Required environment variables (backend)
 
-Pour fonctionner correctement, l’API nécessite les variables d’environnement suivantes (à placer dans `api/.env`) :
+To work properly, the API requires the following environment variables (to be set in `api/.env`):
 
-- `GITHUB_TOKEN` : Jeton d’accès personnel GitHub pour créer des dépôts.
-- `GITHUB_ORGANIZATION_NAME` : Nom de l’organisation GitHub cible.
-- `GITLAB_TOKEN` : Jeton d’accès personnel GitLab pour créer des dépôts.
-- `GITLAB_BASE_URL` : URL de base de l’instance GitLab (ex : https://gitlab.com).
+- `GITHUB_TOKEN`: GitHub personal access token to create repositories.
+- `GITHUB_ORGANIZATION_NAME`: Target GitHub organization name.
+- `GITLAB_TOKEN`: GitLab personal access token to create repositories.
+- `GITLAB_BASE_URL`: Base URL of the GitLab instance (e.g., https://gitlab.com).
 
-Ces variables sont utilisées pour l’authentification et la configuration des plateformes lors de la création de projet. Elles doivent être renseignées avant de lancer l’API.
+These variables are used for authentication and platform configuration during project creation. They must be set before starting the API.
 
-> Voir aussi le fichier d’exemple `api/.env.example` pour le format attendu.
+> See also the example file `api/.env.example` for the expected format.
 
-### Exécution locale
+### Local execution
 
-**Prérequis** :
+**Prerequisites:**
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Docker](https://www.docker.com/)
-- Variables d’environnement dans `api/.env` (voir `api/.env.example`)
+- Environment variables in `api/.env` (see `api/.env.example`)
 
-**Lancer en local (hors Docker)** :
+**Run locally (without Docker):**
 
 ```bash
 cd api
 dotnet run
-# API accessible sur http://localhost:5064
+# API available at http://localhost:5064
 ```
 
-**Lancer en local avec Docker** :
+**Run locally with Docker:**
 
 ```bash
 cd api
@@ -240,99 +240,101 @@ docker build -t platform-engineering-api .
 docker run --env-file .env -p 5064:5064 platform-engineering-api
 ```
 
-### Exécution dans le cloud (via pipelines)
+### Cloud execution (via pipelines)
 
-- L’image Docker est construite et poussée dans Azure Container Registry par le workflow [`ci-build.yaml`](.github/workflows/ci-build.yaml).
-- Le déploiement sur Azure Container Apps est automatisé par le pipeline [`cd-deploy.yaml`](.github/workflows/cd-deploy.yaml).
+- The Docker image is built and pushed to Azure Container Registry by the [`ci-build.yaml`](.github/workflows/ci-build.yaml) workflow.
+- Deployment to Azure Container Apps is automated by the [`cd-deploy.yaml`](.github/workflows/cd-deploy.yaml) pipeline.
 
-### Dockerfile Backend (api/)
+### Backend Dockerfile (api/)
 
-Le Dockerfile du backend (dossier api/) prépare un environnement complet pour exécuter l’API .NET et provisionner de l’infrastructure cloud via Pulumi. Voici les principales dépendances installées et leurs raisons :
+The backend Dockerfile (api/ folder) prepares a complete environment to run the .NET API and provision cloud infrastructure via Pulumi. Here are the main dependencies installed and their purpose:
 
-1. **.NET ASP.NET 10.0** : Image de base pour exécuter l’API .NET.
-2. **Pulumi CLI** : Permet à l’API de provisionner dynamiquement des ressources cloud via Pulumi Automation API.
-3. **Node.js** : Requis pour exécuter les programmes Pulumi écrits en TypeScript/JavaScript (présents dans pulumiPrograms/).
-4. **pnpm** : Gestionnaire de paquets rapide utilisé pour installer les dépendances Node.js des programmes Pulumi.
-5. **Azure CLI** : Permet à Pulumi et à l’API d’interagir avec Azure (création de ressources cloud).
-6. **Copie du SDK .NET dans l’image finale** : Permet d’exécuter des commandes dotnet SDK à l’exécution (utile pour Pulumi ou d’autres outils .NET).
-7. **Configuration des permissions et variables d’environnement** : Pour que l’utilisateur non-root puisse écrire dans /app, /app/.pulumi, /app/.dotnet (nécessaire pour Pulumi et .NET).
+1. **.NET ASP.NET 10.0**: Base image to run the .NET API.
+2. **Pulumi CLI**: Allows the API to dynamically provision cloud resources via Pulumi Automation API.
+3. **Node.js**: Required to run Pulumi programs written in TypeScript/JavaScript (in pulumiPrograms/).
+4. **pnpm**: Fast package manager used to install Node.js dependencies for Pulumi programs.
+5. **Azure CLI**: Allows Pulumi and the API to interact with Azure (create cloud resources).
+6. **Copy .NET SDK into the final image**: Allows running dotnet SDK commands at runtime (useful for Pulumi or other .NET tools).
+7. **Permissions and environment variable configuration**: So the non-root user can write to /app, /app/.pulumi, /app/.dotnet (required for Pulumi and .NET).
 
-Voir le Dockerfile dans api/Dockerfile pour le détail des étapes.
+See the Dockerfile in api/Dockerfile for step details.
 
 ## Pulumi Automation API
 
-La .NET API utilise **Pulumi Automation API** pour provisionner dynamiquement l’infrastructure et les plateformes de code (GitHub, GitLab, etc.).
+The .NET API uses **Pulumi Automation API** to dynamically provision infrastructure and code platforms (GitHub, GitLab, etc.).
 
-### Fonctionnement
+### How it works
 
-1. L’utilisateur choisit une plateforme (GitHub, GitLab) et un template de projet via le frontend.
-2. L’API orchestre l’exécution d’un programme Pulumi spécifique (dans `api/pulumiPrograms/`) pour créer le dépôt distant, initialiser le code, et provisionner l’infrastructure cloud associée.
-3. Les paramètres utilisateur (nom du projet, options, secrets…) sont injectés dans le programme Pulumi.
-4. L’API exécute le cycle complet Pulumi (Up/Destroy) et retourne les informations utiles (URL du repo, endpoints, etc.).
+1. The user selects a platform (GitHub, GitLab) and a project template via the frontend.
+2. The API orchestrates the execution of a specific Pulumi program (in `api/pulumiPrograms/`) to create the remote repository, initialize the code, and provision the associated cloud infrastructure.
+3. User parameters (project name, options, secrets, etc.) are injected into the Pulumi program.
+4. The API runs the full Pulumi cycle (Up/Destroy) and returns useful information (repo URL, endpoints, etc.).
 
-### Arborescence des pulumiPrograms
+### pulumiPrograms directory structure
 
-Chaque sous-dossier de `api/pulumiPrograms/` correspond à une plateforme, un type de ressource ou un template provisionnable :
+Each subfolder of `api/pulumiPrograms/` corresponds to a platform, resource type, or provisionable template:
 
 ```
 api/
 └── pulumiPrograms/
-    ├── platforms/             # Provisionnement de dépôts GitHub/GitLab
+    ├── platforms/             # Provisioning GitHub/GitLab repositories
     │   ├── github/
     │   │   └── index.ts
     │   └── gitlab/
     │       └── index.ts
-    ├── templates/          # Templates de projets (dotnet-api, ecommerce, etc.)
+    ├── templates/          # Project templates (dotnet-api, ecommerce, etc.)
     │   ├── dotnet-api/
     │   ├── ecommerce/
     │   └── enseirb/
-    └── ...                 # Autres ressources ou templates
+    └── ...                 # Other resources or templates
 ```
 
-### Templates de projet
+### Project templates
 
-Des templates de code (ex : dotnet-api, ecommerce, enseirb…) sont stockés dans `api/pulumiPrograms/templates/` et copiés dans le dépôt distant lors de la création du projet.
+Code templates (e.g., dotnet-api, ecommerce, enseirb…) are stored in `api/pulumiPrograms/templates/` and copied to the remote repository when creating a project.
 
 ---
 
 # Frontend (Nuxt 4)
 
-Le frontend est développé avec Nuxt 4 (Vue 3, Pinia, Nuxt UI).
+The frontend is developed with Nuxt 4 (Vue 3, Pinia, Nuxt UI).
 
-### Exécution locale
+### Local execution
 
-**Prérequis** :
+**Prerequisites:**
 
 - [Node.js 22+](https://nodejs.org/)
 - [pnpm](https://pnpm.io/)
 
-**Lancer en local** :
+**Run locally:**
 
 ```bash
 cd app
 pnpm install
 pnpm dev
-# Frontend accessible sur http://localhost:3000
+# Frontend available at http://localhost:3000
 ```
 
-> L’URL de l’API doit être configurée via la variable d’environnement `NUXT_API_URL` (voir `app/.env` ou config Aspire).
+> The API URL must be configured via the `NUXT_API_URL` environment variable (see `app/.env` or Aspire config).
 
-### Exécution dans le cloud (via pipelines)
+### Cloud execution (via pipelines)
 
-- Le build Nuxt est généré et uploadé comme artefact par le workflow CI/CD.
-- Le déploiement sur Azure Static Web Apps est automatisé par le pipeline [`cd-deploy.yaml`](.github/workflows/cd-deploy.yaml).
+- The Nuxt build is generated and uploaded as an artifact by the CI/CD workflow.
+- Deployment to Azure Static Web Apps is automated by the [`cd-deploy.yaml`](.github/workflows/cd-deploy.yaml) pipeline.
+
+---
+
+# Summary of Useful Commands
+
+| Action                      | Local command                        | CI/CD Pipeline             |
+| --------------------------- | ------------------------------------ | -------------------------- |
+| Run everything (Aspire)     | `aspire run`                         | -                          |
+| Run API (.NET)              | `cd api && dotnet run`               | Build/test in `ci-build`   |
+| Run API (Docker)            | `docker build/run` in `api/`         | Build/push in `ci-build`   |
+| Run Frontend (Nuxt)         | `cd app && pnpm install && pnpm dev` | Build/upload in `ci-build` |
+| Deploy infra (Pulumi)       | `cd infrastructure && pulumi up`     | `infrastructure` pipeline  |
+| Deploy API/Frontend (Azure) | -                                    | `cd-deploy.yaml`           |
 
 ---
 
-# Résumé des commandes utiles
 
-| Action                        | Commande locale                      | Pipeline CI/CD               |
-| ----------------------------- | ------------------------------------ | ---------------------------- |
-| Lancer tout (Aspire)          | `aspire run`                         | -                            |
-| Lancer API (.NET)             | `cd api && dotnet run`               | Build/test dans `ci-build`   |
-| Lancer API (Docker)           | `docker build/run` dans `api/`       | Build/push dans `ci-build`   |
-| Lancer Frontend (Nuxt)        | `cd app && pnpm install && pnpm dev` | Build/upload dans `ci-build` |
-| Déployer infra (Pulumi)       | `cd infrastructure && pulumi up`     | Pipeline `infrastructure`    |
-| Déployer API/Frontend (Azure) | -                                    | `cd-deploy.yaml`             |
-
----

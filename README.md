@@ -25,15 +25,15 @@ dotnet run
 
 ## ☁️ Cloud Deployment (CI/CD)
 
-Le déploiement cloud est automatisé via GitHub Actions :
+Cloud deployment is automated via GitHub Actions:
 
-1. **Provisionner l’infrastructure Azure**
-   - Lancer manuellement le pipeline `infrastructure.yaml` (Azure DevOps ou GitHub Actions) pour créer les ressources cloud (ACR, Static Web App, Container App, Key Vault…)
-2. **Déployer l’API et le Frontend**
-   - Le pipeline [`ci-build.yaml`](.github/workflows/ci-build.yaml) build et push l’image Docker de l’API, build le frontend Nuxt, et publie les artefacts
-   - Le pipeline [`cd-deploy.yaml`](.github/workflows/cd-deploy.yaml) déploie l’API sur Azure Container Apps et le frontend sur Azure Static Web Apps
+1. **Provision Azure Infrastructure**
+   - Manually trigger the `infrastructure.yaml` pipeline (Azure DevOps or GitHub Actions) to create cloud resources (ACR, Static Web App, Container App, Key Vault, etc.)
+2. **Deploy the API and Frontend**
+   - The [`ci-build.yaml`](.github/workflows/ci-build.yaml) pipeline builds and pushes the API Docker image, builds the Nuxt frontend, and publishes artifacts
+   - The [`cd-deploy.yaml`](.github/workflows/cd-deploy.yaml) pipeline deploys the API to Azure Container Apps and the frontend to Azure Static Web Apps
 
-**Secrets requis dans GitHub Actions** :
+**Required secrets in GitHub Actions:**
 
 - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 
