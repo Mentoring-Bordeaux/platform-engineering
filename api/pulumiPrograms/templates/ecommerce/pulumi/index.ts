@@ -1,53 +1,98 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as azure from "@pulumi/azure-native";
 
+// --- Configuration ---
 const config = new pulumi.Config();
 
-// Get template parameters
-// Note: Parameters are flattened with dot notation (e.g., "app.framework", "backend.runtimeStack")
-const framework = config.require("app.framework");
-const appDescription = config.require("app.description");
-const capacity = config.getNumber("capacity") || 400;
-const adminPanelDescription = config.require("admin.description");
-const runtimeStack = config.require("backend.runtimeStack");
-const mainApiDescription = config.require("backend.api.mainApi.description");
-const mainApiCaching =
-    config.getBoolean("backend.api.mainApi.enableCaching") ?? true;
-const billingApiDescription = config.require(
-    "backend.api.billingApi.description",
-);
-const paymentGateway =
-    config.get("backend.api.billingApi.paymentGateway") || "Stripe";
+const rawProjectName = config.require("ProjectName");
+const projectName = rawProjectName.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-pulumi.log.info(`Capacity parameter value: ${capacity}`);
-pulumi.log.info(`Main API caching enabled: ${mainApiCaching}`);
-pulumi.log.info(`Payment gateway: ${paymentGateway}`);
+const locationWeb = "westeurope";
+const locationDb = "francecentral";
 
-// Placeholder: In a real scenario, this would create Azure resources
-// For now, we just output the configuration
-export const ecommerceConfig = {
-    app: {
-        framework: framework,
-        description: appDescription,
-    },
-    database: {
-        capacity: capacity,
-    },
-    admin: {
-        description: adminPanelDescription,
-    },
-    backend: {
-        runtimeStack: runtimeStack,
-        api: {
-            mainApi: {
-                description: mainApiDescription,
-                cachingEnabled: mainApiCaching,
-            },
-            billingApi: {
-                description: billingApiDescription,
-                paymentGateway: paymentGateway,
-            },
-        },
-    },
-};
+const appFramework = config.get("app:framework") || "React"; 
+const appDescription = config.get("app:description") || "An e-commerce application built with a modern framework.";
 
-pulumi.log.info(`E-commerce template configured with framework: ${framework}`);
+const backendStack = (config.get("backend:runtimeStack") || "NODE|14-lts").trim().toUpperCase(); 
+const mainApiDescription = config.get("backend:api:mainApi:description") || "A main backend API for the e-commerce application.";
+const mainApiCaching = true;
+const billingApiDescription = config.get("backend:api:billingApi:description") || "A billing API for the e-commerce application.";
+const billingApiPaymentGateway = "Stripe";
+
+const resourceGroup = new azure.resources.ResourceGroup(`${projectName}-rg`, {
+    location: locationWeb,
+});
+
+const frontendApp = new azure.web.StaticSite(`${projectName}-app`, {
+    resourceGroupName: resourceGroup.name,
+    location: locationWeb,
+    buildProperties: {
+        appLocation: `frontend/${appFramework}`,
+        apiLocation: "",
+        outputLocation: "build",
+    },
+    sku: { name: "Free", tier: "Free" },
+});
+
+const adminPanel = new azure.web.StaticSite(`${projectName}-admin`, {
+    resourceGroupName: resourceGroup.name,
+    location: locationWeb,
+    buildProperties: {
+        appLocation: "admin",
+        apiLocation: "",
+        outputLocation: "publish",
+    },
+    sku: { name: "Free", tier: "Free" },
+});
+
+const cosmosDb = new azure.cosmosdb.DatabaseAccount(`${projectName}-db`, {
+    resourceGroupName: resourceGroup.name,
+    location: locationDb,
+    databaseAccountOfferType: "Standard",
+    locations: [{ locationName: locationDb, failoverPriority: 0 }],
+    consistencyPolicy: { defaultConsistencyLevel: "Session" },
+    capabilities: [{ name: "EnableServerless" }],
+    kind: "GlobalDocumentDB",
+});
+
+const backendPlan = new azure.web.AppServicePlan(`${projectName}-plan`, {
+    resourceGroupName: resourceGroup.name,
+    location: locationWeb,
+    kind: "Linux",
+    reserved: true,
+    sku: { name: "F1", tier: "Free", capacity: 1 },
+});
+
+const mainApi = new azure.web.WebApp(`${projectName}-backend-api`, {
+    resourceGroupName: resourceGroup.name,
+    location: locationWeb,
+    serverFarmId: backendPlan.id,
+    siteConfig: {
+        linuxFxVersion: backendStack,
+        appSettings: [
+            { name: "APP_DESCRIPTION", value: mainApiDescription },
+            { name: "ENABLE_CACHING", value: mainApiCaching.toString() },
+            { name: "COSMOS_DB_ACCOUNT", value: cosmosDb.name },
+        ],
+    },
+});
+
+const billingApi = new azure.web.WebApp(`${projectName}-billing-api`, {
+    resourceGroupName: resourceGroup.name,
+    location: locationWeb,
+    serverFarmId: backendPlan.id,
+    siteConfig: {
+        linuxFxVersion: backendStack,
+        appSettings: [
+            { name: "BILLING_DESCRIPTION", value: billingApiDescription },
+            { name: "PAYMENT_GATEWAY", value: billingApiPaymentGateway },
+        ],
+    },
+});
+export const frontendStaticAppName = frontendApp.name;
+export const frontendStaticAppUrl = frontendApp.defaultHostname;
+export const adminUrl = adminPanel.defaultHostname;
+export const mainApiUrl = mainApi.defaultHostName;
+export const billingApiUrl = billingApi.defaultHostName;
+export const cosmosDbName = cosmosDb.name;
+export const resourceGroupName = resourceGroup.name;

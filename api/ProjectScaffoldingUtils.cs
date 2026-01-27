@@ -9,7 +9,7 @@ public static class ProjectScaffoldingUtils
         {
             FrameworkType.dotnet => "new webapi -n app",
             FrameworkType.React => " create vite app --template react-ts --yes --no-interactive",
-            FrameworkType.Vue => "create vue@latest app",
+            FrameworkType.Vue => "create vite appi --template vue --yes --no-interactive",
             FrameworkType.Nuxt => "nuxi init app",
             FrameworkType.JavaSpring => "init app --build=maven --java-version=17",
             _ => throw new ArgumentException("Unsupported framework")
