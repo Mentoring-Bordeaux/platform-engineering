@@ -9,6 +9,8 @@ The project consists of four main components:
 3. **Infrastructure** (`infrastructure/`) - Pulumi TypeScript code for deployment
 4. **Orchestration** (`PlatformEngineering.AppHost/`) - .NET Aspire to manage local development
 
+dotnet run
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -19,20 +21,37 @@ The project consists of four main components:
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/)
 - [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli) (for deployment)
 
-### Run the Full Stack
+---
 
-The easiest way to start the entire stack:
+## ☁️ Cloud Deployment (CI/CD)
+
+Le déploiement cloud est automatisé via GitHub Actions :
+
+1. **Provisionner l’infrastructure Azure**
+   - Lancer manuellement le pipeline `infrastructure.yaml` (Azure DevOps ou GitHub Actions) pour créer les ressources cloud (ACR, Static Web App, Container App, Key Vault…)
+2. **Déployer l’API et le Frontend**
+   - Le pipeline [`ci-build.yaml`](.github/workflows/ci-build.yaml) build et push l’image Docker de l’API, build le frontend Nuxt, et publie les artefacts
+   - Le pipeline [`cd-deploy.yaml`](.github/workflows/cd-deploy.yaml) déploie l’API sur Azure Container Apps et le frontend sur Azure Static Web Apps
+
+**Secrets requis dans GitHub Actions** :
+
+- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+
+---
+
+## 🖥️ Local Development
+
+### Run the Full Stack (Recommended)
 
 ```bash
-# From the project root
 aspire run
 ```
 
-This command automatically starts:
+This command starts:
 
-- The frontend (app)
-- The API (api)
-- The Aspire dashboard to monitor services
+- The frontend (Nuxt, app/)
+- The API (.NET, api/)
+- Aspire dashboard for service discovery
 
 ### Run Services Individually
 
@@ -42,26 +61,32 @@ This command automatically starts:
 cd app
 pnpm install
 pnpm dev
+# http://localhost:3000
 ```
-
-The frontend will be accessible at http://localhost:3000
 
 #### API
 
 ```bash
 cd api
-cd pulumiPrograms
-pnpm install
-cd ..
+cd pulumiPrograms && pnpm install && cd ..
 dotnet run
+# http://localhost:5064
 ```
 
-The API will be accessible at http://localhost:5064
+#### Pulumi Infrastructure (optional, for local preview)
+
+```bash
+cd infrastructure
+pnpm install
+pulumi up
+```
+
+---
 
 ## 🧪 Tests
 
 ```bash
-# Unit tests
+# Unit tests (frontend)
 cd app
 pnpm test
 ```
@@ -163,4 +188,5 @@ cp app/.env.example app/.env
 - [Templates Documentation](TEMPLATES.md) - How templates work and how to create new ones
 - [Frontend README](app/README.md)
 - [API README](api/README.md) - Configuration details for GitHub and GitLab
-- [Infrastructure README](infrastructure/README.md)
+- [Infrastructure README](infrastructure/README.md) - Details on Pulumi infrastructure
+- [doc.md](doc.md) - Project documentation
