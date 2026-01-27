@@ -4,13 +4,6 @@ name: avanade
 displayName: Avanade Template
 description: A template for deploying an API using Avanade best practices.
 parameters:
-  framework:
-    type: text
-    required: true
-    label: Framework
-    displayName: Framework
-    description: The framework used for the Api.
-    default: dotnet
   dotnetVersion:
     type: enum
     required: false
@@ -37,6 +30,13 @@ parameters:
       - S2
       - S3
     default: B1
+  replicas:
+    type: number
+    required: false
+    label: Number of Replicas
+    displayName: Number of Replicas
+    description: The number of instances for the App Service.
+    default: 2
   admin:
     login:
       type: text
