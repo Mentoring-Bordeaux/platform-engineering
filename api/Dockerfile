@@ -2,7 +2,7 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.0-rc.2 AS base
 WORKDIR /app
 
-# Install Pulumi CLI and Node.js (runtime requirements)
+# Install Pulumi CLI and Node.js and Azure CLI (runtime requirements)
 USER root
 RUN apt-get update && apt-get install -y \
       curl ca-certificates gnupg apt-transport-https \
@@ -43,7 +43,7 @@ ENV ASPNETCORE_HTTP_PORTS=5064
 EXPOSE 5064
 
 
-# Install packages for Pulumi programs (root and github subproject)
+# Install packages for Pulumi programs
 FROM node:lts-alpine AS deps
 WORKDIR /pulumiPrograms
 RUN corepack enable
@@ -91,7 +91,7 @@ RUN mkdir -p /etc/dotnet \
     && echo "/usr/share/dotnet" > /etc/dotnet/install_location \
     && ln -sf /usr/share/dotnet/dotnet /usr/bin/dotnet
 
-# Make discovery explicit (important in container environments)
+# Make discovery explicit
 ENV DOTNET_ROOT=/usr/share/dotnet \
     PATH="/usr/share/dotnet:${PATH}" \
     DOTNET_CLI_HOME=/app/.dotnet \
