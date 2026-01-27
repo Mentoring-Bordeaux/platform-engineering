@@ -94,21 +94,41 @@ pnpm test
 
 ## 🔧 Configuration
 
-### API Configuration
+The API uses **dotnet user-secrets** for secure local development configuration. Manage your secrets using your IDE or the command line:
 
-The API uses **dotnet user-secrets** for secure local development configuration:
+### GitHub Configuration
+
+Required to create repositories on GitHub:
 
 ```bash
 cd api
 
-# Set the Nuxt app URL (used for CORS - set to your frontend dev URL)
+# Set your GitHub Personal Access Token (PAT)
+# Required scopes: repo (full control), admin:org (if using organization)
+dotnet user-secrets set "GitHubToken" "ghp_xxxxxxxxxxxxxxxxxxxx"
+
+# Set your GitHub organization name (optional, defaults to user)
+dotnet user-secrets set "GitHubOrganizationName" "your-organization-name"
+
+# Set the Nuxt app URL (used for CORS)
 dotnet user-secrets set "NuxtAppUrl" "http://localhost:3000"
+```
 
-# Set your GitHub token
-dotnet user-secrets set "GitHubToken" "your_github_token_here"
+### GitLab Configuration
 
-# Set your GitHub organization name (optional)
-dotnet user-secrets set "GitHubOrganizationName" "your_organization_name"
+Required to create projects on GitLab:
+
+```bash
+cd api
+
+# Set your GitLab Personal Access Token (PAT)
+# Required scopes: api, read_user, read_repository
+dotnet user-secrets set "GitLabToken" "glpat_xxxxxxxxxxxxxxxxxxxx"
+
+# For self-hosted GitLab: set the API base URL (optional)
+# For gitlab.com, this is automatically set to https://gitlab.com/api/v4
+# Example for self-hosted: https://gitlab.example.com/api/v4
+dotnet user-secrets set "GitLabBaseUrl" "https://gitlab.example.com/api/v4"
 ```
 
 **GitHub token permissions required:**
@@ -120,11 +140,6 @@ dotnet user-secrets set "GitHubOrganizationName" "your_organization_name"
 
 - Windows: `%APPDATA%\Microsoft\UserSecrets\<user_secrets_id>\secrets.json`
 - Linux/macOS: `~/.microsoft/usersecrets/<user_secrets_id>/secrets.json`
-
-**CORS behavior:**
-
-- In **development**: The API allows requests from any origin for convenience
-- In **production**: Set `NuxtAppUrl` to the exact frontend origin for strict CORS enforcement
 
 ### Frontend Configuration
 
@@ -145,6 +160,7 @@ cp app/.env.example app/.env
 
 ## 📚 Documentation
 
+- [Templates Documentation](TEMPLATES.md) - How templates work and how to create new ones
 - [Frontend README](app/README.md)
-- [API README](api/README.md)
+- [API README](api/README.md) - Configuration details for GitHub and GitLab
 - [Infrastructure README](infrastructure/README.md)
