@@ -4,12 +4,6 @@ name: dotnet-api
 displayName: Dotnet API Template
 description: Template for a .NET backend API with Azure SQL, Key Vault, App Service, and Application Insights.
 parameters:
-  Name:
-    type: text
-    required: true
-    label: Project Name
-    displayName: Project Name
-    description: The name prefix for all resources.
   framework:
       type: text
       required: true

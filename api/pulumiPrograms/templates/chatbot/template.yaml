@@ -4,13 +4,6 @@ name: chatbot
 displayName: Chatbot Application Template
 description: Template for a chatbot application (Azure Static Web Apps + Azure Functions + Storage).
 parameters:
-  location:
-    type: text
-    required: false
-    label: Azure Region
-    displayName: Azure Region
-    description: Azure region for all resources.
-    default: westeurope
   apiKey:
     type: password
     required: true
