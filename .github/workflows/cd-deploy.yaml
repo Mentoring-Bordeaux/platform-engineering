@@ -21,7 +21,6 @@ permissions:
 
 jobs:
   download_infra_outputs:
-    # CHANGE: Check 'workflow_run.event' to filter out PR builds
     if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
@@ -90,7 +89,6 @@ jobs:
       - name: Deploy to Azure Container Apps
         shell: bash
         run: |
-          # Deploy image and bind app env vars (tokens via secretref + non-sensitive config values).
           az containerapp update \
             --name "${ACR_NAME}" \
             --resource-group "${RG}" \
@@ -112,7 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # NEW: Login to Azure to fetch secrets
+      # Login to Azure to fetch secrets
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -120,7 +118,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # NEW: Fetch the token securely
+      # Fetch the token securely
       - name: Get SWA Deployment Token
         id: get_token
         run: |
@@ -142,7 +140,6 @@ jobs:
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
-          # CHANGE: Use the securely fetched token
           azure_static_web_apps_api_token: ${{ steps.get_token.outputs.SWA_TOKEN }} 
           action: "upload"
           app_location: ${{ env.APP_LOCATION }}
