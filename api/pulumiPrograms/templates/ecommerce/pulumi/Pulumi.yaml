@@ -1,3 +1,44 @@
-name: ecommerce-template
-runtime: nodejs
-description: E-commerce template pulumi program
+name: ecommerce
+description: E-commerce Application Template (Azure Static Web Apps + Cosmos DB + App Service APIs)
+
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: azure-typescript
+
+  ProjectName:
+    description: Project name used as prefix for all resources
+    value: my-ecommerce
+
+  locationWeb:
+    description: Azure region for web resources (SWA, App Service)
+    value: westeurope
+
+  locationDb:
+    description: Azure region for database resources (Cosmos DB)
+    value: francecentral
+
+  app.framework:
+    description: Frontend framework folder under frontend/
+    value: react
+
+  app.description:
+    description: Optional app description (currently informational)
+    value: An e-commerce application built with a modern framework.
+
+  backend.runtimeStack:
+    description: Runtime stack for the backend APIs (linuxFxVersion)
+    value: NODE|14-lts
+
+  backend.api.mainApi.description:
+    description: Description for the main backend API
+    value: A main backend API for the e-commerce application.
+
+  backend.api.billingApi.description:
+    description: Description for the billing API
+    value: A billing API for the e-commerce application.

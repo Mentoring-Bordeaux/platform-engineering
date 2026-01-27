@@ -27,13 +27,6 @@ parameters:
       displayName: Application Description
       description: A brief description of the e-commerce application.
       default: An e-commerce application built with a modern framework.
-  capacity:
-    type: number
-    required: false
-    label: Database Capacity (RU/s)
-    displayName: Database Capacity (RU/s)
-    description: The throughput capacity for the Cosmos DB.
-    default: 400
   admin:
     description:
       type: textarea
@@ -64,13 +57,6 @@ parameters:
           displayName: Main Backend API Description
           description: A brief description of the main backend API for the e-commerce application.
           default: A main backend API for the e-commerce application.
-        enableCaching:
-          type: boolean
-          required: false
-          label: Enable Caching
-          displayName: Enable Caching
-          description: Enable caching for the main API.
-          default: true
       billingApi:
         description:
           type: textarea
