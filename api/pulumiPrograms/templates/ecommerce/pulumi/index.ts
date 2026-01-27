@@ -7,15 +7,16 @@ const config = new pulumi.Config();
 const rawProjectName = config.require("ProjectName");
 const projectName = rawProjectName.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-const locationWeb = config.get("locationWeb") || "westeurope";
-const locationDb = config.get("locationDb") || "francecentral";
+const locationWeb = "westeurope";
+const locationDb = "francecentral";
 
-const appFramework = config.get("app:framework") || "React";
-const appDescription = config.get("app:description");
-const backendStack = (config.get("backend:runtimeStack") || "NODE|14-lts").trim().toUpperCase();
-const mainApiDescription = config.get("backend:api:mainApi:description");
+const appFramework = config.get("app:framework") || "React"; 
+const appDescription = config.get("app:description") || "An e-commerce application built with a modern framework.";
+
+const backendStack = (config.get("backend:runtimeStack") || "NODE|14-lts").trim().toUpperCase(); 
+const mainApiDescription = config.get("backend:api:mainApi:description") || "A main backend API for the e-commerce application.";
 const mainApiCaching = true;
-const billingApiDescription = config.get("backend:api:billingApi:description");
+const billingApiDescription = config.get("backend:api:billingApi:description") || "A billing API for the e-commerce application.";
 const billingApiPaymentGateway = "Stripe";
 
 const resourceGroup = new azure.resources.ResourceGroup(`${projectName}-rg`, {

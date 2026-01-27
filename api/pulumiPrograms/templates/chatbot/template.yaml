@@ -1,0 +1,43 @@
+schemaVersion: 1.0.0
+kind: Template
+name: chatbot
+displayName: Chatbot Application Template
+description: Template for a chatbot application (Azure Static Web Apps + Azure Functions + Storage).
+parameters:
+  location:
+    type: text
+    required: false
+    label: Azure Region
+    displayName: Azure Region
+    description: Azure region for all resources.
+    default: westeurope
+  apiKey:
+    type: password
+    required: true
+    label: AI API Key
+    displayName: AI API Key
+    description: API key for the AI provider (stored as a secret).
+  framework:
+    type: enum
+    required: true
+    label: Framework
+    displayName: Framework
+    description: The framework used for the Static Web App.
+    values:
+      - vanilla
+      - react
+      - vue
+      - angular
+      - svelte
+      - nextjs
+      - nuxtjs
+    default: react
+resources:
+  - type: azure.resource-group
+    name: rg
+  - type: azure.storage-account
+    name: storage
+  - type: azure.function-app
+    name: functions
+  - type: azure.swa
+    name: frontend

@@ -1,0 +1,18 @@
+name: dotnetapi
+description: Test a basic template for creating a dotnet api on Azure
+
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: azure-typescript
+  ProjectName:
+    description: Project name used as prefix for all resources
+    default: chatbot
+  location:
+    description: Azure region for all resources
+    default: westeurope
