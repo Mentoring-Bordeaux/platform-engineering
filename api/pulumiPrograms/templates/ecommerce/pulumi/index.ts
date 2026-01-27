@@ -10,16 +10,13 @@ const projectName = rawProjectName.toLowerCase().replace(/[^a-z0-9]/g, "");
 const locationWeb = config.get("locationWeb") || "westeurope";
 const locationDb = config.get("locationDb") || "francecentral";
 
-const appFramework = config.get("app:framework") || "vanilla"; // template supports: vanilla, react, vue, angular, svelte, nextjs, nuxtjs
-const appDescription = config.get("app:description") || "An e-commerce application built with a modern framework.";
-
-const backendStack = (config.get("backend:runtimeStack") || "NODE|14-lts").trim().toUpperCase(); // NODE|14-lts, DOTNETCORE|3.1, PYTHON|3.8, JAVA|11
-const mainApiDescription = config.get("backend:api:mainApi:description") || "A main backend API for the e-commerce application.";
-const mainApiCaching = config.getBoolean("backend:api:mainApi:enableCaching") ?? true;
-const billingApiDescription = config.get("backend:api:billingApi:description") || "A billing API for the e-commerce application.";
-const billingApiPaymentGateway = config.get("backend:api:billingApi:paymentGateway") || "Stripe";
-
-const dbCapacity = config.getNumber("capacity") || 400;
+const appFramework = config.get("app:framework") || "React";
+const appDescription = config.get("app:description");
+const backendStack = (config.get("backend:runtimeStack") || "NODE|14-lts").trim().toUpperCase();
+const mainApiDescription = config.get("backend:api:mainApi:description");
+const mainApiCaching = true;
+const billingApiDescription = config.get("backend:api:billingApi:description");
+const billingApiPaymentGateway = "Stripe";
 
 const resourceGroup = new azure.resources.ResourceGroup(`${projectName}-rg`, {
     location: locationWeb,
