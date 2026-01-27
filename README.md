@@ -9,6 +9,8 @@ The project consists of four main components:
 3. **Infrastructure** (`infrastructure/`) - Pulumi TypeScript code for deployment
 4. **Orchestration** (`PlatformEngineering.AppHost/`) - .NET Aspire to manage local development
 
+dotnet run
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -19,20 +21,37 @@ The project consists of four main components:
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/)
 - [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli) (for deployment)
 
-### Run the Full Stack
+---
 
-The easiest way to start the entire stack:
+## ☁️ Cloud Deployment (CI/CD)
+
+Cloud deployment is automated via GitHub Actions:
+
+1. **Provision Azure Infrastructure**
+   - Manually trigger the `infrastructure.yaml` pipeline (Azure DevOps or GitHub Actions) to create cloud resources (ACR, Static Web App, Container App, Key Vault, etc.)
+2. **Deploy the API and Frontend**
+   - The [`ci-build.yaml`](.github/workflows/ci-build.yaml) pipeline builds and pushes the API Docker image, builds the Nuxt frontend, and publishes artifacts
+   - The [`cd-deploy.yaml`](.github/workflows/cd-deploy.yaml) pipeline deploys the API to Azure Container Apps and the frontend to Azure Static Web Apps
+
+**Required secrets in GitHub Actions:**
+
+- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+
+---
+
+## 🖥️ Local Development
+
+### Run the Full Stack (Recommended)
 
 ```bash
-# From the project root
 aspire run
 ```
 
-This command automatically starts:
+This command starts:
 
-- The frontend (app)
-- The API (api)
-- The Aspire dashboard to monitor services
+- The frontend (Nuxt, app/)
+- The API (.NET, api/)
+- Aspire dashboard for service discovery
 
 ### Run Services Individually
 
@@ -42,26 +61,32 @@ This command automatically starts:
 cd app
 pnpm install
 pnpm dev
+# http://localhost:3000
 ```
-
-The frontend will be accessible at http://localhost:3000
 
 #### API
 
 ```bash
 cd api
-cd pulumiPrograms
-pnpm install
-cd ..
+cd pulumiPrograms && pnpm install && cd ..
 dotnet run
+# http://localhost:5064
 ```
 
-The API will be accessible at http://localhost:5064
+#### Pulumi Infrastructure (optional, for local preview)
+
+```bash
+cd infrastructure
+pnpm install
+pulumi up
+```
+
+---
 
 ## 🧪 Tests
 
 ```bash
-# Unit tests
+# Unit tests (frontend)
 cd app
 pnpm test
 ```
@@ -94,21 +119,41 @@ pnpm test
 
 ## 🔧 Configuration
 
-### API Configuration
+The API uses **dotnet user-secrets** for secure local development configuration. Manage your secrets using your IDE or the command line:
 
-The API uses **dotnet user-secrets** for secure local development configuration:
+### GitHub Configuration
+
+Required to create repositories on GitHub:
 
 ```bash
 cd api
 
-# Set the Nuxt app URL (used for CORS - set to your frontend dev URL)
+# Set your GitHub Personal Access Token (PAT)
+# Required scopes: repo (full control), admin:org (if using organization)
+dotnet user-secrets set "GitHubToken" "ghp_xxxxxxxxxxxxxxxxxxxx"
+
+# Set your GitHub organization name (optional, defaults to user)
+dotnet user-secrets set "GitHubOrganizationName" "your-organization-name"
+
+# Set the Nuxt app URL (used for CORS)
 dotnet user-secrets set "NuxtAppUrl" "http://localhost:3000"
+```
 
-# Set your GitHub token
-dotnet user-secrets set "GitHubToken" "your_github_token_here"
+### GitLab Configuration
 
-# Set your GitHub organization name (optional)
-dotnet user-secrets set "GitHubOrganizationName" "your_organization_name"
+Required to create projects on GitLab:
+
+```bash
+cd api
+
+# Set your GitLab Personal Access Token (PAT)
+# Required scopes: api, read_user, read_repository
+dotnet user-secrets set "GitLabToken" "glpat_xxxxxxxxxxxxxxxxxxxx"
+
+# For self-hosted GitLab: set the API base URL (optional)
+# For gitlab.com, this is automatically set to https://gitlab.com/api/v4
+# Example for self-hosted: https://gitlab.example.com/api/v4
+dotnet user-secrets set "GitLabBaseUrl" "https://gitlab.example.com/api/v4"
 ```
 
 **GitHub token permissions required:**
@@ -120,11 +165,6 @@ dotnet user-secrets set "GitHubOrganizationName" "your_organization_name"
 
 - Windows: `%APPDATA%\Microsoft\UserSecrets\<user_secrets_id>\secrets.json`
 - Linux/macOS: `~/.microsoft/usersecrets/<user_secrets_id>/secrets.json`
-
-**CORS behavior:**
-
-- In **development**: The API allows requests from any origin for convenience
-- In **production**: Set `NuxtAppUrl` to the exact frontend origin for strict CORS enforcement
 
 ### Frontend Configuration
 
@@ -145,6 +185,8 @@ cp app/.env.example app/.env
 
 ## 📚 Documentation
 
+- [Templates Documentation](TEMPLATES.md) - How templates work and how to create new ones
 - [Frontend README](app/README.md)
-- [API README](api/README.md)
-- [Infrastructure README](infrastructure/README.md)
+- [API README](api/README.md) - Configuration details for GitHub and GitLab
+- [Infrastructure README](infrastructure/README.md) - Details on Pulumi infrastructure
+- [doc.md](doc.md) - Project documentation
