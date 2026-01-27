@@ -1,0 +1,60 @@
+schemaVersion: 1.0.0
+kind: Template
+name: avanade
+displayName: Avanade Template
+description: A template for deploying an API using Avanade best practices.
+parameters:
+  framework:
+    type: text
+    required: true
+    label: Framework
+    displayName: Framework
+    description: The framework used for the Api.
+    default: dotnet
+  dotnetVersion:
+    type: enum
+    required: false
+    label: .NET Version
+    displayName: .NET Version
+    description: The version of .NET for the App Service.
+    values:
+      - "10.0"
+      - "8.0"
+      - "7.0"
+      - "6.0"
+    default: "10.0"
+  sku:
+    type: enum
+    required: false
+    label: App Service Plan SKU
+    displayName: App Service Plan SKU
+    description: SKU for the App Service Plan.
+    values:
+      - B1
+      - B2
+      - B3
+      - S1
+      - S2
+      - S3
+    default: B1
+  admin:
+    login:
+      type: text
+      required: true
+      label: SQL Admin Login
+      displayName: SQL Admin Login
+      description: Administrator login for SQL Server.
+      default: sqladminuser
+    password:
+      type: password
+      required: true
+      label: SQL Admin Password
+      displayName: SQL Admin Password
+      description: Administrator password for SQL Server.
+resources:
+  - type: azure.resources.ResourceGroup
+    name: resourceGroup
+  - type: azure.appservice.AppServicePlan
+    name: appServicePlan
+  - type: azure.appservice.WebApp
+    name: webApp
