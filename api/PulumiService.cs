@@ -58,7 +58,7 @@ public class PulumiService
             );
             throw new Exception($"Pulumi program not found in template '{templateName}'");
         }
-        request.Parameters["ProjectName"] = request.ProjectName;
+        request.TemplateParameters["ProjectName"] = request.ProjectName; ////////////////////////////////////////////WHY
 
         var result = await ExecuteInternalAsync(
             pulumiProgramDir,
