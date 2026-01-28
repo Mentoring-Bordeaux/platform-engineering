@@ -5,12 +5,16 @@
         <span
           aria-live="assertive"
           class="sr-only"
-          >Loading, creating your project repository</span
         >
+          {{ progressState.title }}
+        </span>
         <USkeleton class="bg-primary h-5 w-5 rounded-full" />
-        <div class="flex flex-col items-center justify-center text-center">
-          <p>Creating your project repository</p>
-          <p>This may take a few moments...</p>
+
+        <div
+          class="flex flex-col items-center justify-center gap-2 text-center"
+        >
+          <p class="text-lg font-semibold">{{ progressState.title }}</p>
+          <p class="text-sm text-gray-500">{{ progressState.body }}</p>
         </div>
       </div>
     </template>
@@ -138,6 +142,12 @@ const state = reactive<ConfigurationFormState>({
 })
 
 const isLoading = ref(false)
+
+const progressState = reactive({
+  title: 'Creating your project repository',
+  body: 'This may take a few moments...'
+})
+
 const overlay = useOverlay()
 
 interface ModalOptions {
@@ -152,6 +162,7 @@ async function openModal({ title, body }: ModalOptions) {
       body
     }
   })
+  isLoading.value = false
   modal.open()
 }
 
@@ -172,7 +183,7 @@ async function onSubmit() {
     const createProjectRequest = {
       templateName: props.projectData.template.name,
       projectName: props.projectData.name,
-      parameters: state.parameters,
+      templateParameters: state.parameters,
       platform: {
         type: state.platform.type,
         config: state.platform.config
@@ -182,9 +193,8 @@ async function onSubmit() {
     console.log('Sending create project request:', createProjectRequest)
 
     interface CreateProjectResponse {
-      statusCode: number
-      message: string
-      outputs?: Record<string, unknown>
+      projectName: string
+      idProjectCreation: number
     }
 
     const { data, error } = await useFetch<CreateProjectResponse>(
@@ -198,9 +208,17 @@ async function onSubmit() {
       }
     )
 
-    isLoading.value = false
+    if (data.value) {
+      console.log('Project creation started', data.value)
 
-    if (error.value) {
+      progressState.title = 'Project Creation Started'
+      progressState.body = `Step 1/6 : The creation of your project '${data.value.projectName}' has been initiated successfully. You will receive further updates as the process continues.`
+      startPollingProjectStatus(
+        data.value.idProjectCreation,
+        data.value.projectName
+      )
+      return
+    } else if (error.value) {
       console.error('Error creating project:', error.value.data)
 
       const title =
@@ -215,28 +233,85 @@ async function onSubmit() {
 
       openModal({
         title,
-        body: errorMessage
+        body: `There was an error creating your project: ${errorMessage}`
       })
       return
-    }
-
-    if (data.value) {
-      const successMessage =
-        data.value.message || 'Project created successfully'
-      console.log('Project created successfully:', data.value)
+    } else {
+      console.error('Unknown error creating project')
       openModal({
-        title: 'Your Project is Ready!',
-        body: successMessage
+        title: 'Error Creating Project',
+        body: 'An unexpected error occurred while creating your project.'
       })
     }
   } catch (ex) {
-    isLoading.value = false
     console.error('Exception creating project:', ex)
-    openModal({
-      title: 'Error',
-      body: 'An unexpected error occurred while creating your project.'
-    })
+    progressState.title = 'Error'
+    progressState.body =
+      'An unexpected error occurred while creating your project.'
   }
+}
+
+async function startPollingProjectStatus(
+  idProjectCreation: number,
+  projectName: string
+): Promise<void> {
+  const pollingInterval = 3000 // 3 seconds
+
+  const poll = async () => {
+    try {
+      interface ProjectStatusResponse {
+        stepsCompleted: number
+        currentStep: string
+        status: 'InProgress' | 'Completed' | 'Failed'
+        errorMessage?: string
+        Outputs?: Record<string, unknown>
+      }
+
+      const { data, error } = await useFetch<ProjectStatusResponse>(
+        `/create-project/status/${idProjectCreation}`,
+        {
+          key: `status-poll-${Date.now()}`, // Unique key to avoid caching
+          server: false,
+          baseURL: config.public.apiBase,
+          method: 'GET',
+          watch: false
+        }
+      )
+
+      if (data.value) {
+        console.log('Project status:', data.value)
+
+        if (data.value.status === 'InProgress') {
+          progressState.title = `Your project '${projectName}' is currently being created`
+          progressState.body = `Current Step: ${data.value.currentStep} (${data.value.stepsCompleted}/5 completed). Please wait...`
+          // Continue polling
+          setTimeout(poll, pollingInterval)
+        } else if (data.value.status === 'Completed') {
+          openModal({
+            title: `Project '${projectName}' Created Successfully`,
+            body: `Your project has been created successfully!
+            All outputs you can need: ${JSON.stringify(data.value.Outputs)}`
+          })
+          return
+        } else if (data.value.status === 'Failed') {
+          openModal({
+            title: `Project '${projectName}' Creation Failed`,
+            body: `There was an error creating your project: ${
+              data.value.errorMessage || 'Unknown error'
+            } during step: ${data.value.currentStep}`
+          })
+          return
+        }
+      } else if (error.value) {
+        console.error('Error fetching project status:', error.value.data)
+      }
+    } catch (ex) {
+      console.error('Exception while polling project status:', ex)
+    }
+  }
+
+  // Start the polling loop
+  poll()
 }
 
 function handleBackPress() {
