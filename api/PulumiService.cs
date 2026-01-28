@@ -23,19 +23,18 @@ public class PulumiService
     }
 
     // Executes a template Pulumi program (e.g., ecommerce).
-    public async Task<ResultPulumiAction> ExecuteTemplateAsync(CreateProjectRequest request, IGitRepositoryService gitService)
+    public async Task<Dictionary<string, object>> ExecuteTemplateAsync(
+        CreateProjectRequest request,
+        IGitRepositoryService gitService
+    )
     {
         string templateName = request.TemplateName;
-        var templateDir = Path.Combine(
+
+        // Locate the template directory
+        string templateDir = Path.Combine(
             Directory.GetCurrentDirectory(),
             "pulumiPrograms/templates",
             templateName
-        );
-
-        _logger.LogInformation(
-            "Looking for template '{TemplateName}' at path '{TemplateDir}'",
-            templateName,
-            templateDir
         );
 
         if (!Directory.Exists(templateDir))
@@ -45,13 +44,7 @@ public class PulumiService
                 templateName,
                 templateDir
             );
-            return new ResultPulumiAction
-            {
-                Name = request.ProjectName,
-                ResourceType = "template",
-                StatusCode = 400,
-                Message = $"Template not found: '{templateName}'",
-            };
+            throw new Exception($"Template not found: '{templateName}'");
         }
 
         var pulumiProgramDir = Path.Combine(templateDir, "pulumi");
@@ -63,52 +56,36 @@ public class PulumiService
                 templateName,
                 pulumiProgramDir
             );
-            return new ResultPulumiAction
-            {
-                Name = request.ProjectName,
-                ResourceType = "template",
-                StatusCode = 400,
-                Message = $"Pulumi program not found in template '{templateName}'",
-            };
+            throw new Exception($"Pulumi program not found in template '{templateName}'");
         }
 
-        var result = await ExecuteInternalAsync(pulumiProgramDir, request.ProjectName, "template", request.Parameters, gitService, templateName);
+        var result = await ExecuteInternalAsync(
+            pulumiProgramDir,
+            request.ProjectName,
+            request.TemplateName,
+            request.TemplateParameters,
+            gitService,
+            templateName
+        );
         return result;
     }
 
     // Executes a platform Pulumi program (e.g., GitHub, GitLab) to create a repository.
-    public async Task<ResultPulumiAction> ExecutePlatformAsync(
+    public async Task<GitRepositoryCreationOutputs> CreateGitRepositoryAsync(
         CreateProjectRequest request,
-        Dictionary<string, string> injectedCredentials,
-        IGitRepositoryService gitService
+        Dictionary<string, string> injectedCredentials
     )
     {
-        if (request.Platform == null)
-        {
-            return new ResultPulumiAction
-            {
-                Name = request.ProjectName,
-                ResourceType = "platform",
-                StatusCode = 400,
-                Message = "Platform configuration is required",
-            };
-        }
-
-        string platformType = request.Platform.Type.ToLowerInvariant();
+        string platformType = request.Platform!.Type.ToLowerInvariant();
         _logger.LogInformation(
             "Executing platform Pulumi program for type: {PlatformType}",
             platformType
         );
+
         var platformDir = Path.Combine(
             Directory.GetCurrentDirectory(),
             "pulumiPrograms/platforms",
             platformType
-        );
-
-        _logger.LogInformation(
-            "Looking for platform '{PlatformType}' at path '{PlatformDir}'",
-            platformType,
-            platformDir
         );
 
         if (!Directory.Exists(platformDir))
@@ -118,43 +95,77 @@ public class PulumiService
                 platformType,
                 platformDir
             );
-            return new ResultPulumiAction
-            {
-                Name = request.ProjectName,
-                ResourceType = platformType,
-                StatusCode = 400,
-                Message = $"Platform '{platformType}' not found",
-            };
+            throw new Exception($"Platform not found: '{platformType}'");
         }
 
         // Merge platform config with injected credentials
-        var mergedParams = request.Platform.Config
-            .Where(kv => kv.Key != "type")
-            .ToDictionary(kv => kv.Key, kv => (object)kv.Value);
+        Dictionary<string, object> mergedParams = request.Platform.Config;
 
         foreach (var kvp in injectedCredentials)
         {
             mergedParams[kvp.Key] = kvp.Value;
         }
 
-        var result = await ExecuteInternalAsync(platformDir, request.ProjectName, platformType, mergedParams);
+        Dictionary<string, object> repositoryCreationResult = await ExecuteInternalAsync(
+            platformDir,
+            request.ProjectName,
+            platformType,
+            mergedParams
+        );
+
+        // Extract outputs from general dictionary
+        string? gitRepositoryUrl = repositoryCreationResult["repoUrl"]?.ToString();
+        if (string.IsNullOrEmpty(gitRepositoryUrl))
+        {
+            throw new Exception("The repository URL is missing or null after repository creation.");
+        }
+        string? gitRepositoryName = repositoryCreationResult["repoNameOutput"]?.ToString();
+        if (string.IsNullOrEmpty(gitRepositoryName))
+        {
+            throw new Exception(
+                "The repository name is missing or null after repository creation."
+            );
+        }
+
+        GitRepositoryCreationOutputs result = new GitRepositoryCreationOutputs(
+            gitRepositoryName,
+            gitRepositoryUrl
+        );
 
         return result;
     }
 
-    public async Task InitializeRepo(string projectName, List<FrameworkType> frameworks, IGitRepositoryService gitService)
+    public async Task InitializeRepo(
+        string projectName,
+        List<FrameworkType> frameworks,
+        IGitRepositoryService gitService
+    )
     {
         if (frameworks == null || !frameworks.Any())
             return;
 
-        _logger.LogInformation("Initializing repository with frameworks: {Frameworks}", string.Join(", ", frameworks));
+        _logger.LogInformation(
+            "Initializing repository with frameworks: {Frameworks}",
+            string.Join(", ", frameworks)
+        );
 
         await gitService.InitializeRepoWithFrameworksAsync(frameworks, projectName);
-
     }
-    private async Task PushPulumiAsync(string projectName, Dictionary<string, object> parameters, IGitRepositoryService gitService, string? templateName = null)
+
+    private async Task PushPulumiAsync(
+        string projectName,
+        Dictionary<string, object> parameters,
+        IGitRepositoryService gitService,
+        string? templateName = null
+    )
     {
-        string localPath = Path.Combine(Directory.GetCurrentDirectory(), "pulumiPrograms", "templates", templateName!, "pulumi");
+        string localPath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "pulumiPrograms",
+            "templates",
+            templateName!,
+            "pulumi"
+        );
 
         if (!Directory.Exists(localPath))
         {
@@ -169,7 +180,10 @@ public class PulumiService
                     githubService.OrgName,
                     githubService.RepoName,
                     localPath,
-                    parameters.ToDictionary(kv => kv.Key, kv => kv.Value.ToString() ?? string.Empty),
+                    parameters.ToDictionary(
+                        kv => kv.Key,
+                        kv => kv.Value.ToString() ?? string.Empty
+                    ),
                     projectName
                 );
                 break;
@@ -178,7 +192,10 @@ public class PulumiService
                 await gitlabService.PushPulumiCodeAsync(
                     gitlabService.ProjectPathOrUrl,
                     localPath,
-                    parameters.ToDictionary(kv => kv.Key, kv => kv.Value.ToString() ?? string.Empty),
+                    parameters.ToDictionary(
+                        kv => kv.Key,
+                        kv => kv.Value.ToString() ?? string.Empty
+                    ),
                     projectName
                 );
                 break;
@@ -190,10 +207,10 @@ public class PulumiService
     }
 
     // Internal method that executes a Pulumi program with proper setup and cleanup.
-    private async Task<ResultPulumiAction> ExecuteInternalAsync(
+    private async Task<Dictionary<string, object>> ExecuteInternalAsync(
         string workingDir,
         string projectName,
-        string resourceType,
+        string platformOrTemplate,
         Dictionary<string, object> parameters,
         IGitRepositoryService? gitService = null,
         string? templateName = null
@@ -203,7 +220,7 @@ public class PulumiService
         Directory.CreateDirectory(pulumiHome);
 
         string stackName = Regex.Replace(
-            $"{projectName}-{resourceType}".ToLower(),
+            $"{projectName}-{platformOrTemplate}".ToLower(),
             @"[^a-z0-9\-]",
             "-"
         );
@@ -227,13 +244,7 @@ public class PulumiService
                     installResult.ExitCode,
                     installResult.StandardError
                 );
-                return new ResultPulumiAction
-                {
-                    Name = projectName,
-                    ResourceType = resourceType,
-                    StatusCode = 500,
-                    Message = "Pulumi dependencies install failed. " + installResult.StandardError,
-                };
+                throw new Exception("Pulumi install failed: " + installResult.StandardError);
             }
         }
 
@@ -277,7 +288,7 @@ public class PulumiService
 
                 return key;
             }
-                                             
+
             // Remove stale config keys from previous runs
             var desiredKeys = parameters
                 .Keys.Where(k => k != "type")
@@ -345,39 +356,31 @@ public class PulumiService
             _logger.LogInformation(
                 "Resource created successfully: {Name} of {ResourceType}",
                 projectName,
-                resourceType
+                platformOrTemplate
             );
             if (gitService != null)
             {
-                _logger.LogInformation("Pushing Pulumi code to Git repository before destroying the stack...");
+                _logger.LogInformation(
+                    "Pushing Pulumi code to Git repository before destroying the stack..."
+                );
                 await PushPulumiAsync(projectName, parameters, gitService, templateName);
             }
-            return new ResultPulumiAction
-            {
-                Name = projectName,
-                ResourceType = resourceType,
-                StatusCode = 200,
-                Message = "Resource created successfully",
-                Outputs = outputs
-                    .Where(kv => kv.Value != null)
-                    .ToDictionary(kv => kv.Key, kv => kv.Value!),
-            };
+            return outputs
+                .Where(kv => kv.Value != null)
+                .ToDictionary(kv => kv.Key, kv => kv.Value!);
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
                 "Error executing {ResourceType} for '{ProjectName}'",
-                resourceType,
+                platformOrTemplate,
                 projectName
             );
-            return new ResultPulumiAction
-            {
-                Name = projectName,
-                ResourceType = resourceType,
-                StatusCode = 500,
-                Message = $"Execution failed: {ex.Message}",
-            };
+            throw new Exception(
+                $"Error executing {platformOrTemplate} for '{projectName}': {ex.Message}",
+                ex
+            );
         }
         finally
         {
@@ -393,13 +396,18 @@ public class PulumiService
                     if (File.Exists(stackFilePath))
                     {
                         File.Delete(stackFilePath);
-                        _logger.LogInformation("Stack file '{StackFile}' deleted successfully.", stackFileName);
+                        _logger.LogInformation(
+                            "Stack file '{StackFile}' deleted successfully.",
+                            stackFileName
+                        );
                     }
                     else
                     {
-                        _logger.LogWarning("Stack file '{StackFile}' not found, nothing to delete.", stackFileName);
+                        _logger.LogWarning(
+                            "Stack file '{StackFile}' not found, nothing to delete.",
+                            stackFileName
+                        );
                     }
-
                 }
                 catch (Exception ex)
                 {
@@ -407,7 +415,6 @@ public class PulumiService
                 }
             }
         }
-
     }
 
     private static string? TryGetPulumiProjectName(string workingDir)

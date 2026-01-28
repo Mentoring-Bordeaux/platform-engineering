@@ -3,7 +3,7 @@ public class CreateProjectRequest
 {
     public string TemplateName { get; set; } = string.Empty;
 
-    public Dictionary<string, object> Parameters { get; set; } = new();
+    public Dictionary<string, object> TemplateParameters { get; set; } = new();
 
     public PlatformConfig? Platform { get; set; }
 

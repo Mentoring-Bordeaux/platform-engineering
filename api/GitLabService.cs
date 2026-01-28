@@ -9,6 +9,7 @@ public class GitLabService : GitRepositoryServiceBase
     private readonly string _projectPathOrUrl;
 
     public string ProjectPathOrUrl => _projectPathOrUrl;
+
     public GitLabService(string token, string projectPathOrUrl, string? gitlabBaseUrl = null)
     {
         if (string.IsNullOrWhiteSpace(token))
@@ -16,10 +17,7 @@ public class GitLabService : GitRepositoryServiceBase
 
         var apiBase = NormalizeGitLabApiBaseUrl(gitlabBaseUrl);
 
-        _http = new HttpClient
-        {
-            BaseAddress = new Uri(apiBase, UriKind.Absolute)
-        };
+        _http = new HttpClient { BaseAddress = new Uri(apiBase, UriKind.Absolute) };
 
         _http.DefaultRequestHeaders.Add("PRIVATE-TOKEN", token);
         _http.DefaultRequestHeaders.Accept.Add(
@@ -27,6 +25,7 @@ public class GitLabService : GitRepositoryServiceBase
         );
         _projectPathOrUrl = projectPathOrUrl;
     }
+
     private static string NormalizeGitLabApiBaseUrl(string? gitlabBaseUrl)
     {
         var trimmed = (gitlabBaseUrl ?? string.Empty).Trim();
@@ -34,19 +33,21 @@ public class GitLabService : GitRepositoryServiceBase
             return "https://gitlab.com/api/v4/";
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
-            throw new ArgumentException($"Invalid GitLab base URL: '{gitlabBaseUrl}'", nameof(gitlabBaseUrl));
+            throw new ArgumentException(
+                $"Invalid GitLab base URL: '{gitlabBaseUrl}'",
+                nameof(gitlabBaseUrl)
+            );
 
         var path = uri.AbsolutePath.TrimEnd('/');
         if (path.EndsWith("/api/v4", StringComparison.OrdinalIgnoreCase))
             return uri.ToString().TrimEnd('/') + "/";
 
-        var builder = new UriBuilder(uri)
-        {
-            Path = uri.AbsolutePath.TrimEnd('/') + "/api/v4/",
-        };
+        var builder = new UriBuilder(uri) { Path = uri.AbsolutePath.TrimEnd('/') + "/api/v4/" };
         return builder.Uri.ToString();
     }
+
     public sealed record ResolvedProject(int Id, string DefaultBranch);
+
     public async Task<ResolvedProject> ResolveProjectAsync(string projectPathOrUrl)
     {
         string idOrPath;
@@ -67,7 +68,9 @@ public class GitLabService : GitRepositoryServiceBase
                 var project = JsonSerializer.Deserialize<GitLabProjectDto>(body);
                 if (project != null && project.Id != 0)
                 {
-                    var defaultBranch = string.IsNullOrWhiteSpace(project.DefaultBranch) ? "main" : project.DefaultBranch;
+                    var defaultBranch = string.IsNullOrWhiteSpace(project.DefaultBranch)
+                        ? "main"
+                        : project.DefaultBranch;
                     return new ResolvedProject(project.Id, defaultBranch);
                 }
             }
@@ -76,64 +79,102 @@ public class GitLabService : GitRepositoryServiceBase
 
         throw new Exception($"GitLab project '{projectPathOrUrl}' not accessible yet.");
     }
+
     private static string ExtractProjectPath(string projectPathOrUrl)
     {
         if (Uri.TryCreate(projectPathOrUrl, UriKind.Absolute, out var uri))
             return uri.AbsolutePath.Trim('/');
         return projectPathOrUrl.Trim('/');
     }
+
     private sealed class GitLabProjectDto
     {
-        [JsonPropertyName("id")] public int Id { get; set; }
-        [JsonPropertyName("default_branch")] public string? DefaultBranch { get; set; }
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("default_branch")]
+        public string? DefaultBranch { get; set; }
     }
-    protected override async Task PushFrameworkDirectoryAsync(string localPath, FrameworkType framework)
+
+    protected override async Task PushFrameworkDirectoryAsync(
+        string localPath,
+        FrameworkType framework
+    )
     {
         var project = await ResolveProjectAsync(_projectPathOrUrl);
         await PushDirectoryToGitLab(project.Id, project.DefaultBranch, localPath, $"{framework}");
     }
-    private async Task PushDirectoryToGitLab(int projectId, string branch, string localPath, string targetRoot)
+
+    private async Task PushDirectoryToGitLab(
+        int projectId,
+        string branch,
+        string localPath,
+        string targetRoot
+    )
     {
         foreach (var filePath in Directory.GetFiles(localPath, "*", SearchOption.AllDirectories))
         {
-            var relativePath = Path
-                .Combine(targetRoot, Path.GetRelativePath(localPath, filePath))
+            var relativePath = Path.Combine(targetRoot, Path.GetRelativePath(localPath, filePath))
                 .Replace("\\", "/");
 
             string content = await File.ReadAllTextAsync(filePath);
 
-            await CreateOrUpdateFileAsync(projectId, branch, relativePath, content, $"Add/Update {relativePath}");
+            await CreateOrUpdateFileAsync(
+                projectId,
+                branch,
+                relativePath,
+                content,
+                $"Add/Update {relativePath}"
+            );
         }
     }
-    private async Task CreateOrUpdateFileAsync(int projectId, string branch, string filePath, string content, string commitMessage)
+
+    private async Task CreateOrUpdateFileAsync(
+        int projectId,
+        string branch,
+        string filePath,
+        string content,
+        string commitMessage
+    )
     {
         var encodedPath = Uri.EscapeDataString(filePath);
 
         using var createResponse = await _http.PostAsync(
             $"projects/{projectId}/repository/files/{encodedPath}",
-            new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["branch"] = branch,
-                ["content"] = content,
-                ["commit_message"] = commitMessage
-            })
-        );
-
-        if (createResponse.IsSuccessStatusCode) return;
-
-        if (createResponse.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict or HttpStatusCode.UnprocessableEntity)
-        {
-            using var updateResponse = await _http.PutAsync(
-                $"projects/{projectId}/repository/files/{encodedPath}",
-                new FormUrlEncodedContent(new Dictionary<string, string>
+            new FormUrlEncodedContent(
+                new Dictionary<string, string>
                 {
                     ["branch"] = branch,
                     ["content"] = content,
-                    ["commit_message"] = commitMessage
-                })
+                    ["commit_message"] = commitMessage,
+                }
+            )
+        );
+
+        if (createResponse.IsSuccessStatusCode)
+            return;
+
+        if (
+            createResponse.StatusCode
+            is HttpStatusCode.BadRequest
+                or HttpStatusCode.Conflict
+                or HttpStatusCode.UnprocessableEntity
+        )
+        {
+            using var updateResponse = await _http.PutAsync(
+                $"projects/{projectId}/repository/files/{encodedPath}",
+                new FormUrlEncodedContent(
+                    new Dictionary<string, string>
+                    {
+                        ["branch"] = branch,
+                        ["content"] = content,
+                        ["commit_message"] = commitMessage,
+                    }
+                )
             );
 
-            if (updateResponse.IsSuccessStatusCode) return;
+            if (updateResponse.IsSuccessStatusCode)
+                return;
 
             var updateBody = await updateResponse.Content.ReadAsStringAsync();
             throw new Exception($"Failed to update file '{filePath}'. {updateBody}");
@@ -141,10 +182,19 @@ public class GitLabService : GitRepositoryServiceBase
         var createBody = await createResponse.Content.ReadAsStringAsync();
         throw new Exception($"Failed to create file '{filePath}'. {createBody}");
     }
-    public async Task PushPulumiCodeAsync(string projectPathOrUrl, string localPulumiPath, Dictionary<string, string> parameters, string Name)
+
+    public async Task PushPulumiCodeAsync(
+        string projectPathOrUrl,
+        string localPulumiPath,
+        Dictionary<string, string> parameters,
+        string Name
+    )
     {
         if (string.IsNullOrWhiteSpace(projectPathOrUrl))
-            throw new ArgumentException("Project path or URL is required", nameof(projectPathOrUrl));
+            throw new ArgumentException(
+                "Project path or URL is required",
+                nameof(projectPathOrUrl)
+            );
 
         parameters["Name"] = Name;
 
@@ -153,9 +203,19 @@ public class GitLabService : GitRepositoryServiceBase
 
         var project = await ResolveProjectAsync(projectPathOrUrl);
 
-        await PushPulumiAsync(localPulumiPath, parameters, async (relativePath, content) =>
-        {
-            await CreateOrUpdateFileAsync(project.Id, project.DefaultBranch, relativePath, content, $"Add/Update {relativePath}");
-        });
+        await PushPulumiAsync(
+            localPulumiPath,
+            parameters,
+            async (relativePath, content) =>
+            {
+                await CreateOrUpdateFileAsync(
+                    project.Id,
+                    project.DefaultBranch,
+                    relativePath,
+                    content,
+                    $"Add/Update {relativePath}"
+                );
+            }
+        );
     }
 }
