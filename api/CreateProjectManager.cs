@@ -27,6 +27,7 @@ public class CreateProjectManager
         _projectCreationStates[id].CurrentStep = StatePulumi.Step.InputVerification;
 
         // Step 1: Input Verification
+        _logger.LogInformation("Validating create project request for ID {ProjectId}", id);
         try
         {
             ValidateCreateProjectRequest(request);
@@ -37,9 +38,13 @@ public class CreateProjectManager
             _projectCreationStates[id].ErrorMessage = ex.Message;
             return;
         }
+        _logger.LogInformation("Create project request for ID {ProjectId} is valid", id);
 
-        // Step 2: Git Session Setup
-        _projectCreationStates[id].CurrentStep = StatePulumi.Step.GitSessionSetup;
+        // Git Credentials Retrieval
+        _logger.LogInformation(
+            "Retrieving git credentials for platform {PlatformType}",
+            request.Platform!.Type
+        );
         Dictionary<string, string> injectedCredentials;
         var platformType = request.Platform!.Type.Trim().ToLowerInvariant();
         try
@@ -53,7 +58,8 @@ public class CreateProjectManager
             return;
         }
 
-        // Step 3: Git Repository Creation
+        // Step 2:Git Repository Creation
+        _logger.LogInformation("Creating git repository for project ID {ProjectId}", id);
         _projectCreationStates[id].CurrentStep = StatePulumi.Step.GitRepositoryCreation;
         GitRepositoryCreationOutputs gitRepositoryCreationOutputs;
         try
@@ -69,6 +75,12 @@ public class CreateProjectManager
             _projectCreationStates[id].ErrorMessage = ex.Message;
             return;
         }
+        _logger.LogInformation(
+            "Git repository {RepositoryName} at {RepositoryUrl} created successfully for project ID {ProjectId}",
+            gitRepositoryCreationOutputs.RepositoryName,
+            gitRepositoryCreationOutputs.RepositoryUrl,
+            id
+        );
 
         // Initialize Git Service for further steps
         IGitRepositoryService gitService;
@@ -89,7 +101,11 @@ public class CreateProjectManager
             );
         }
 
-        // Step 4: Framework on Git Repository Initialization
+        // Step 3: Framework on Git Repository Initialization
+        _logger.LogInformation(
+            "Initializing frameworks on git repository for project ID {ProjectId}",
+            id
+        );
         _projectCreationStates[id].CurrentStep = StatePulumi
             .Step
             .FrameworkOnGitRepositoryInitialization;
@@ -119,12 +135,18 @@ public class CreateProjectManager
         {
             _projectCreationStates[id].Status = StatePulumi.StateStatus.Failed;
             _projectCreationStates[id].ErrorMessage = ex.Message;
-            // await pulumiService.DeleteGitRepository(gitService, gitRepositoryCreationOutputs.RepositoryName);
+            _logger.LogWarning(ex, "Framework initialization failed, rolling back git repository");
+            await pulumiService.DeleteGitRepository(gitService);
             return;
         }
+        _logger.LogInformation(
+            "Frameworks initialized successfully on git repository for project ID {ProjectId}",
+            id
+        );
 
-        // Step 5: Pulumi Template Resource Creation
-        _projectCreationStates[id].CurrentStep = StatePulumi.Step.PulumiTemplateRessourceCreation;
+        // Step 4: Pulumi Template Resource Creation
+        _logger.LogInformation("Executing Pulumi template for project ID {ProjectId}", id);
+        _projectCreationStates[id].CurrentStep = StatePulumi.Step.PulumiTemplateResourceCreation;
         Dictionary<string, object> templateExecutionOutputs;
         try
         {
@@ -137,15 +159,24 @@ public class CreateProjectManager
         {
             _projectCreationStates[id].Status = StatePulumi.StateStatus.Failed;
             _projectCreationStates[id].ErrorMessage = ex.Message;
-            // await pulumiService.DeleteGitRepository(gitService, gitRepositoryCreationOutputs.RepositoryName);
-            // await pulumiService.CleanupPulumiStack(request.ProjectName);
+            _logger.LogWarning(ex, "Pulumi template execution failed, rolling back git repository");
+            await pulumiService.DeleteGitRepository(gitService);
             return;
         }
+        _logger.LogInformation(
+            "Pulumi template executed successfully for project ID {ProjectId}",
+            id
+        );
 
-        // Step 6: Stack Pulumi Transfer on Git Repository
+        // Step 5: Stack Pulumi Transfer on Git Repository
         // (Implemented inside ExecuteTemplateAsync for now)
+        _logger.LogInformation(
+            "Transferring Pulumi stack to git repository for project ID {ProjectId}",
+            id
+        );
 
         // Success
+        _logger.LogInformation("Project creation succeeded for project ID {ProjectId}", id);
         _projectCreationStates[id].CurrentStep = StatePulumi.Step.Success;
         _projectCreationStates[id].Status = StatePulumi.StateStatus.Success;
         _projectCreationStates[id].Outputs!["gitRepositoryUrl"] =
@@ -266,5 +297,14 @@ public class CreateProjectManager
         }
 
         return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
+    }
+
+    public StatePulumi? GetProjectStatus(int id)
+    {
+        if (_projectCreationStates.TryGetValue(id, out var status))
+        {
+            return status;
+        }
+        return null;
     }
 }

@@ -45,7 +45,6 @@ public abstract class GitRepositoryServiceBase : IGitRepositoryService
 
             ProjectScaffoldingUtils.GenerateProjectByCli(framework, fwDir);
         }
-
         await pushAction(tempDir);
 
         Directory.Delete(tempDir, true);
@@ -72,4 +71,6 @@ public abstract class GitRepositoryServiceBase : IGitRepositoryService
     }
 
     protected abstract Task PushFrameworkDirectoryAsync(string localPath, FrameworkType framework);
+
+    public abstract Task DeleteRepositoryAsync();
 }

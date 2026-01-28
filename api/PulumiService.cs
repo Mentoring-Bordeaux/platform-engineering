@@ -58,7 +58,9 @@ public class PulumiService
             );
             throw new Exception($"Pulumi program not found in template '{templateName}'");
         }
-        request.TemplateParameters["ProjectName"] = request.ProjectName; ////////////////////////////////////////////WHY
+
+        // Ensure ProjectName is included in parameters to name the resources in Pulumi program
+        request.TemplateParameters["ProjectName"] = request.ProjectName;
 
         var result = await ExecuteInternalAsync(
             pulumiProgramDir,
@@ -151,6 +153,21 @@ public class PulumiService
         );
 
         await gitService.InitializeRepoWithFrameworksAsync(frameworks, projectName);
+    }
+
+    public async Task DeleteGitRepository(IGitRepositoryService gitService)
+    {
+        try
+        {
+            _logger.LogInformation("Attempting to delete git repository");
+            await gitService.DeleteRepositoryAsync();
+            _logger.LogInformation("Git repository deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete git repository during cleanup");
+            // Continue cleanup process even if repository deletion fails
+        }
     }
 
     private async Task PushPulumiAsync(
@@ -366,6 +383,10 @@ public class PulumiService
                 );
                 await PushPulumiAsync(projectName, parameters, gitService, templateName);
             }
+            if (projectName == "testException" && platformOrTemplate != "github")
+            {
+                throw new Exception("Simulated exception for testing purposes.");
+            }
             return outputs
                 .Where(kv => kv.Value != null)
                 .ToDictionary(kv => kv.Key, kv => kv.Value!);
@@ -378,6 +399,38 @@ public class PulumiService
                 platformOrTemplate,
                 projectName
             );
+            // Destroying the stack to avoid orphaned resources
+            if (stack != null)
+            {
+                try
+                {
+                    await stack.RefreshAsync();
+                    _logger.LogInformation(
+                        "Destroying stack '{StackName}' to clean up resources.",
+                        stackName
+                    );
+                    await stack.DestroyAsync(
+                        new DestroyOptions
+                        {
+                            OnStandardOutput = Console.WriteLine,
+                            OnStandardError = Console.Error.WriteLine,
+                        }
+                    );
+                    _logger.LogInformation(
+                        "Stack '{StackName}' destroyed successfully.",
+                        stackName
+                    );
+                }
+                catch (Exception destroyEx)
+                {
+                    _logger.LogWarning(
+                        destroyEx,
+                        "Failed to destroy stack '{StackName}' during cleanup.",
+                        stackName
+                    );
+                }
+            }
+
             throw new Exception(
                 $"Error executing {platformOrTemplate} for '{projectName}': {ex.Message}",
                 ex
@@ -390,7 +443,7 @@ public class PulumiService
             {
                 try
                 {
-                    // Le fichier est dans le dossier du programme Pulumi
+                    // The stack file is named Pulumi.<stackName>.yaml and is located in workingDir
                     string stackFileName = $"Pulumi.{stackName}.yaml";
                     string stackFilePath = Path.Combine(workingDir, stackFileName);
 

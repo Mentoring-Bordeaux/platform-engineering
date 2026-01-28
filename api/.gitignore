@@ -40,3 +40,6 @@ pulumiPrograms/**/node_modules/
 
 # Pulumi stack files
 pulumiPrograms/**/Pulumi.*.yaml
+
+# Pulumi state files
+*.pulumi/

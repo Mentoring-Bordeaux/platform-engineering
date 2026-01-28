@@ -105,6 +105,24 @@ public class GitLabService : GitRepositoryServiceBase
         await PushDirectoryToGitLab(project.Id, project.DefaultBranch, localPath, $"{framework}");
     }
 
+    public override async Task DeleteRepositoryAsync()
+    {
+        try
+        {
+            var project = await ResolveProjectAsync(_projectPathOrUrl);
+            var encodedProjectId = Uri.EscapeDataString(project.Id.ToString());
+            var response = await _http.DeleteAsync($"projects/{encodedProjectId}");
+            if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Project already deleted or doesn't exist, which is fine for cleanup
+        }
+    }
+
     private async Task PushDirectoryToGitLab(
         int projectId,
         string branch,

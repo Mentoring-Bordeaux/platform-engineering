@@ -12,7 +12,7 @@ public static class ProjectScaffoldingUtils
             FrameworkType.Vue => "create vite appi --template vue --yes --no-interactive",
             FrameworkType.Nuxt => "nuxi init app",
             FrameworkType.JavaSpring => "init app --build=maven --java-version=17",
-            _ => throw new ArgumentException("Unsupported framework")
+            _ => throw new ArgumentException("Unsupported framework"),
         };
 
         string executable = framework switch
@@ -21,7 +21,7 @@ public static class ProjectScaffoldingUtils
             FrameworkType.React or FrameworkType.Vue => "pnpm",
             FrameworkType.Nuxt => "npx",
             FrameworkType.JavaSpring => "spring",
-            _ => throw new ArgumentException("Unsupported framework")
+            _ => throw new ArgumentException("Unsupported framework"),
         };
 
         RunCommand(executable, args, targetDir);
@@ -29,6 +29,7 @@ public static class ProjectScaffoldingUtils
 
     private static void RunCommand(string fileName, string args, string workingDir)
     {
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -38,20 +39,35 @@ public static class ProjectScaffoldingUtils
                 WorkingDirectory = workingDir,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                UseShellExecute = false
-            }
+                UseShellExecute = false,
+            },
         };
 
         process.Start();
-        string stderr = process.StandardError.ReadToEnd();
+
+        // Read stdout and stderr asynchronously to prevent deadlock
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
         process.WaitForExit();
 
+        string stderr = stderrTask.Result;
+        string stdout = stdoutTask.Result;
+
+
         if (process.ExitCode != 0)
-            throw new Exception($"Command failed: {fileName} {args}\n{stderr}");
+        {
+            throw new Exception(
+                $"Command failed: {fileName} {args}\nExit Code: {process.ExitCode}\nstdout: {stdout}\nstderr: {stderr}"
+            );
+        }
+
     }
+
     public static string ApplyPulumiParameters(
         string content,
-        Dictionary<string, string> parameters)
+        Dictionary<string, string> parameters
+    )
     {
         foreach (var kv in parameters)
         {
@@ -60,17 +76,20 @@ public static class ProjectScaffoldingUtils
             content = Regex.Replace(
                 content,
                 $@"config\.require\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)",
-                $"\"{value}\"");
+                $"\"{value}\""
+            );
 
             content = Regex.Replace(
                 content,
                 $@"config\.get\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)\s*(\|\|\s*[""'][^""']*[""'])?",
-                $"\"{value}\"");
+                $"\"{value}\""
+            );
 
             content = Regex.Replace(
                 content,
                 $@"config\.getSecret\(\s*[""']{Regex.Escape(kv.Key)}[""']\s*\)",
-                $"\"{value}\"");
+                $"\"{value}\""
+            );
         }
 
         return content;

@@ -13,17 +13,19 @@ public class GitHubService : GitRepositoryServiceBase
     {
         _client = new GitHubClient(new ProductHeaderValue("InfraAutomation"))
         {
-            Credentials = new Credentials(token)
+            Credentials = new Credentials(token),
         };
         _orgName = orgName;
         _repoName = repoName;
     }
+
     public async Task PushPulumiCodeAsync(
         string orgName,
         string repoName,
         string localPulumiPath,
         Dictionary<string, string> parameters,
-        string name)
+        string name
+    )
     {
         parameters["Name"] = name;
 
@@ -38,26 +40,40 @@ public class GitHubService : GitRepositoryServiceBase
                         orgName,
                         repoName,
                         path,
-                        new CreateFileRequest($"Add {path}", content, "main"));
+                        new CreateFileRequest($"Add {path}", content, "main")
+                    );
                 }
                 catch (ApiException)
                 {
-                    var existing = await _client.Repository.Content
-                        .GetAllContentsByRef(orgName, repoName, path, "main");
+                    var existing = await _client.Repository.Content.GetAllContentsByRef(
+                        orgName,
+                        repoName,
+                        path,
+                        "main"
+                    );
 
                     await _client.Repository.Content.UpdateFile(
                         orgName,
                         repoName,
                         path,
-                        new UpdateFileRequest($"Update {path}", content, existing[0].Sha, "main"));
+                        new UpdateFileRequest($"Update {path}", content, existing[0].Sha, "main")
+                    );
                 }
-            });
+            }
+        );
     }
-    private async Task PushDirectoryToGitHub(string orgName, string repoName, string localPath, string targetRoot)
+
+    private async Task PushDirectoryToGitHub(
+        string orgName,
+        string repoName,
+        string localPath,
+        string targetRoot
+    )
     {
         foreach (var filePath in Directory.GetFiles(localPath, "*", SearchOption.AllDirectories))
         {
-            var relativePath = Path.Combine(targetRoot, Path.GetRelativePath(localPath, filePath)).Replace("\\", "/");
+            var relativePath = Path.Combine(targetRoot, Path.GetRelativePath(localPath, filePath))
+                .Replace("\\", "/");
             string content = await File.ReadAllTextAsync(filePath);
 
             try
@@ -69,21 +85,54 @@ public class GitHubService : GitRepositoryServiceBase
                     new CreateFileRequest($"Add {relativePath}", content, branch: "main")
                 );
             }
-            catch (Octokit.ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
+            catch (Octokit.ApiException ex)
+                when (ex.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
             {
-                var existingFile = await _client.Repository.Content.GetAllContentsByRef(orgName, repoName, relativePath, "main");
+                var existingFile = await _client.Repository.Content.GetAllContentsByRef(
+                    orgName,
+                    repoName,
+                    relativePath,
+                    "main"
+                );
                 await _client.Repository.Content.UpdateFile(
                     orgName,
                     repoName,
                     relativePath,
-                    new UpdateFileRequest($"Update {relativePath}", content, existingFile[0].Sha, "main")
+                    new UpdateFileRequest(
+                        $"Update {relativePath}",
+                        content,
+                        existingFile[0].Sha,
+                        "main"
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(
+                    $"Failed to push file {relativePath} to GitHub repository {orgName}/{repoName}: {ex.Message}",
+                    ex
                 );
             }
         }
     }
-    protected override async Task PushFrameworkDirectoryAsync(string localPath, FrameworkType framework)
+
+    protected override async Task PushFrameworkDirectoryAsync(
+        string localPath,
+        FrameworkType framework
+    )
     {
         await PushDirectoryToGitHub(_orgName, _repoName, localPath, framework.ToString());
     }
 
+    public override async Task DeleteRepositoryAsync()
+    {
+        try
+        {
+            await _client.Repository.Delete(_orgName, _repoName);
+        }
+        catch (Octokit.NotFoundException)
+        {
+            // Repository already deleted or doesn't exist, which is fine for cleanup
+        }
+    }
 }

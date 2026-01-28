@@ -78,6 +78,34 @@ public class Program
         app.MapPost("/create-project", createProjectHandler);
         app.MapPost("/api/create-project", createProjectHandler);
 
+        var getProjectStatusHandler = (int id, CreateProjectManager createProjectManager) =>
+        {
+            StatePulumi? status = createProjectManager.GetProjectStatus(id);
+            if (status == null)
+            {
+                return Results.NotFound(new { message = "Project not found" });
+            }
+            StatePulumiForFrontend statusForFrontend = new StatePulumiForFrontend
+            {
+                Status = status.Status.ToString(),
+                CurrentStep = status.CurrentStep.ToString(),
+                ErrorMessage = status.ErrorMessage,
+                Outputs = status.Outputs,
+                StepsCompleted = (int)status.CurrentStep,
+            };
+            app.Logger.LogInformation(
+                "Retrieved status for project {ProjectId}: {Status}, {CurrentStep}, {StepsCompleted}",
+                id,
+                statusForFrontend.Status,
+                statusForFrontend.CurrentStep,
+                statusForFrontend.StepsCompleted
+            );
+            return Results.Ok(statusForFrontend);
+        };
+
+        app.MapGet("/create-project/status/{id}", getProjectStatusHandler);
+        app.MapGet("/api/create-project/status/{id}", getProjectStatusHandler);
+
         var getTemplates = (ILogger<Program> logger) =>
         {
             var templatesDir = Path.Combine(
